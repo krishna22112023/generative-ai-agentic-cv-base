@@ -97,7 +97,7 @@ def get_llm_by_type(llm_type: LLMType) -> ChatOpenAI | ChatDeepSeek:
 
 
 # Initialize LLMs for different purposes - now these will be cached
-reasoning_llm = get_llm_by_type("reasoning")
+'''reasoning_llm = get_llm_by_type("reasoning")
 basic_llm = get_llm_by_type("basic")
 vl_llm = get_llm_by_type("vision")
 
@@ -110,4 +110,4 @@ if __name__ == "__main__":
     print(full_response)
 
     basic_llm.invoke("Hello")
-    vl_llm.invoke("Hello")
+    vl_llm.invoke("Hello")'''

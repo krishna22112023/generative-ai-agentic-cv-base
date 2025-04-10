@@ -20,7 +20,7 @@ import pyprojroot
 from src.agents.llm import get_llm_by_type
 from .decorators import log_io
 
-root = pyprojroot.find_root(pyprojroot.has_dir("config"))
+root = pyprojroot.find_root(pyprojroot.has_dir("src"))
 sys.path.append(str(root))
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ def openai_vlm_iqa(prefix: str) -> str:
     llm = get_llm_by_type("vision")
 
     # Inject the output parser’s instructions into your system prompt.
-    fp_prompt = f"{root}/src/prompts/IQA.md"
+    fp_prompt = f"{root}/src/prompts/openai_iqa.md"
     with open(fp_prompt, 'r', encoding='utf-8') as f:
         prompt_template = f.read()
 

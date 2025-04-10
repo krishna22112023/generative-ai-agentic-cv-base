@@ -5,7 +5,7 @@ from typing import Literal
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 
-from src.agents import data_collector_agent, data_quality_agent, data_preprocessor_agent, data_annotator_agent
+from src.agents import data_collector_agent, data_quality_agent, data_preprocessor_agent
 from src.agents.llm import get_llm_by_type
 from src.config import TEAM_MEMBERS
 from src.config.agents import AGENT_LLM_MAP
@@ -79,26 +79,21 @@ def data_preprocessor_node(state: State) -> Command[Literal["supervisor"]]:
         goto="supervisor",
     )
 
-def data_annotator_node(state: State) -> Command[Literal["supervisor"]]:
-    """Node for the data annotator agent that performs annotations on the preprocessed data."""
-    logger.info("data annotator agent starting task")
-    result = data_annotator_agent.invoke(state)
-    logger.info("data annotator agent completed task")
-    logger.debug(f"data annotator agent response: {result['messages'][-1].content}")
-    return Command(
-        update={
-            "messages": [
-                HumanMessage(
-                    content=RESPONSE_FORMAT.format(
-                        "data_annotator", result["messages"][-1].content
-                    ),
-                    name="data_annotator",
-                )
-            ]
-        },
-        goto="supervisor",
-    )
+def coordinator_node(state: State) -> Command[Literal["planner", "__end__"]]:
+    """Coordinator node that communicate with customers."""
+    logger.info("Coordinator talking.")
+    messages = apply_prompt_template("coordinator", state)
+    response = get_llm_by_type(AGENT_LLM_MAP["coordinator"]).invoke(messages)
+    logger.debug(f"Current state messages: {state['messages']}")
+    logger.debug(f"coordinator response: {response}")
 
+    goto = "__end__"
+    if "handoff_to_planner" in response.content:
+        goto = "planner"
+
+    return Command(
+        goto=goto,
+    )
 
 def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
     """Supervisor node that decides which agent should act next."""

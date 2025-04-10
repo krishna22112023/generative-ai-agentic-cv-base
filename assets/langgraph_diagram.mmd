@@ -1,0 +1,27 @@
+%%{init: {'flowchart': {'curve': 'linear'}}}%%
+graph TD;
+	__start__(<p>__start__</p>)
+	coordinator(coordinator)
+	planner(planner)
+	supervisor(supervisor)
+	data_collector(data_collector)
+	data_quality(data_quality)
+	data_preprocessor(data_preprocessor)
+	reporter(reporter)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> coordinator;
+	coordinator -.-> planner;
+	coordinator -.-> __end__;
+	planner -.-> supervisor;
+	planner -.-> __end__;
+	supervisor -.-> data_collector;
+	supervisor -.-> data_quality;
+	supervisor -.-> data_preprocessor;
+	supervisor -.-> __end__;
+	data_collector -.-> supervisor;
+	data_quality -.-> supervisor;
+	data_preprocessor -.-> supervisor;
+	reporter -.-> supervisor;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc

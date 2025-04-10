@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import pyprojroot
 
 # Load environment variables
-root = pyprojroot.find_root(pyprojroot.has_dir("config"))
+root = pyprojroot.find_root(pyprojroot.has_dir("src"))
 load_dotenv(os.path.join(root,".env"))
 
 # Tool configuration
@@ -12,3 +12,6 @@ MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
 MINIO_SECRET_KEY= os.getenv("MINIO_SECRET_KEY")
 MINIO_ENDPOINT_URL= os.getenv("MINIO_ENDPOINT_URL")
 BUCKET_NAME=os.getenv("BUCKET_NAME")
+
+# IQA configuration
+ABS_PATH_TO_PYTHON_ENV = "/Users/krishnaiyer/miniforge3/envs/restormer/bin/python"

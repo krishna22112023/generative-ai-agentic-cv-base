@@ -11,8 +11,9 @@ import pyprojroot
 from typing import List,Optional, Dict
 
 from .decorators import log_io
+from src.config import ABS_PATH_TO_PYTHON_ENV
 
-root = pyprojroot.find_root(pyprojroot.has_dir("config"))
+root = pyprojroot.find_root(pyprojroot.has_dir("src"))
 sys.path.append(str(root))
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ def create_ir_pipeline() -> str:
     }
 
     # Load the IQA results from the intermediates folder
-    iqa_results_path = os.path.join(root, "data", "intermediates", "iqa_results.json")
+    iqa_results_path = os.path.join(root, "data", "intermediate_results", "iqa_results.json")
 
     with open(iqa_results_path, 'r') as f:
         iqa_results = json.load(f)
@@ -51,7 +52,7 @@ def create_ir_pipeline() -> str:
         pipeline[image] = [tool for tool in filtered if tool is not None]  # Filter out None values
     
     # Save the pipeline to a JSON file
-    intermediate_path = os.path.join(root, "data", "intermediates", "pipeline.json")
+    intermediate_path = os.path.join(root, "data", "intermediate_results", "pipeline.json")
     with open(intermediate_path, 'w', encoding='utf-8') as outfile:
         json.dump(pipeline, outfile, indent=4)
 
@@ -66,11 +67,11 @@ def run_ir_pipeline(pipeline: Optional[Dict[str, List[str]]] = None) -> bool:
     """
     logger.info("Running pipeline for image restoration tasks.")
 
-    pipeline = os.path.join(root, "data", "intermediates", "pipeline.json")
+    pipeline = os.path.join(root, "data", "intermediate_results", "pipeline.json")
     input_dir = os.path.join(root)
     output_dir = os.path.join(root, "data", "output")
     script_path = "src/utils/restormer.py"
-    cmd = f"conda run -n restormer python {os.path.join(root, script_path)} --pipeline {pipeline} --input_dir {input_dir} --output_dir {output_dir}"
+    cmd = f"conda run -n restormer {ABS_PATH_TO_PYTHON_ENV} {os.path.join(root, script_path)} --pipeline {pipeline} --input_dir {input_dir} --output_dir {output_dir}"
     subprocess.run(cmd, shell=True, check=True, executable='/bin/bash')
 
     return True

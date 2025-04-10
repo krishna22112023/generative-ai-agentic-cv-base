@@ -1,5 +1,5 @@
 """
-Server script for running the LangManus API.
+Server script for running the API.
 """
 
 import logging
@@ -14,7 +14,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-    logger.info("Starting LangManus API server")
+    logger.info("Starting API server")
     uvicorn.run(
         "src.api.app:app",
         host="0.0.0.0",

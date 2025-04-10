@@ -54,3 +54,5 @@ def run_agent_workflow(user_input: str, debug: bool = False):
 
 if __name__ == "__main__":
     print(graph.get_graph().draw_mermaid())
+    with open("./assets/langgraph_diagram.mmd", "w") as f:
+        f.write(graph.get_graph().draw_mermaid())

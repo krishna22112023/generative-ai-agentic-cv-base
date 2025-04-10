@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import pyprojroot
 
 # Load environment variables
-root = pyprojroot.find_root(pyprojroot.has_dir("config"))
+root = pyprojroot.find_root(pyprojroot.has_dir("src"))
 load_dotenv(os.path.join(root,".env"))
 
 # Reasoning LLM configuration (for complex reasoning tasks)
