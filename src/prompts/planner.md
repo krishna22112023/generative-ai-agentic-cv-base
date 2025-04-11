@@ -15,6 +15,7 @@ As a Planner, you can breakdown the major subject into sub-topics and expand the
 - **`data collector`**: Uses various API calls to a minio object storage server to list down, download, upload or delete files and/or folders within minio.
 - **`data quality`**: Assess the quality of images, identifies different degredation types and returns a summary of the quality of the images. 
 - **`data preprocessor`**: Creates and executes a preprocessing pipeline for image restoration to enhance the quality of each image.
+- **`data annotator`**: Performs bounding box annotations for images stored in personal file system. 
 - **`reporter`**: Write a professional report based on the result of each step.
 
 ## Execution Rules

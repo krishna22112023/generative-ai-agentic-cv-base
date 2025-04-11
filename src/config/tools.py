@@ -15,3 +15,7 @@ BUCKET_NAME=os.getenv("BUCKET_NAME")
 
 # IQA configuration
 ABS_PATH_TO_PYTHON_ENV = "/Users/krishnaiyer/miniforge3/envs/restormer/bin/python"
+
+# Annotation configuration
+ANNOTATION_MODEL = os.getenv("ANNOTATION_MODEL", "gemini-2.5-pro-exp-03-25")
+ANNOTATION_API_KEY = os.getenv("ANNOTATION_API_KEY")

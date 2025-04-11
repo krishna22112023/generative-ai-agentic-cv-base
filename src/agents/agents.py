@@ -8,7 +8,8 @@ from src.tools import (
     delete_objects,
     openai_vlm_iqa,
     create_ir_pipeline,
-    run_ir_pipeline
+    run_ir_pipeline,
+    gemini_annotator
 )
 
 from .llm import get_llm_by_type
@@ -32,6 +33,12 @@ data_preprocessor_agent = create_react_agent(
     get_llm_by_type(AGENT_LLM_MAP["data_preprocessor"]),
     tools=[create_ir_pipeline,run_ir_pipeline],
     prompt=lambda state: apply_prompt_template("data_preprocessor", state),
+)
+
+data_annotator_agent = create_react_agent(
+    get_llm_by_type(AGENT_LLM_MAP["data_annotator"]),
+    tools=[gemini_annotator],
+    prompt=lambda state: apply_prompt_template("data_annotator", state),
 )
 
 

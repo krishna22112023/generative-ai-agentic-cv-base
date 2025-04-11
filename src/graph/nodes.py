@@ -5,7 +5,7 @@ from typing import Literal
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 
-from src.agents import data_collector_agent, data_quality_agent, data_preprocessor_agent
+from src.agents import data_collector_agent, data_quality_agent, data_preprocessor_agent, data_annotator_agent
 from src.agents.llm import get_llm_by_type
 from src.config import TEAM_MEMBERS
 from src.config.agents import AGENT_LLM_MAP
@@ -73,6 +73,26 @@ def data_preprocessor_node(state: State) -> Command[Literal["supervisor"]]:
                         "data_preprocessor", result["messages"][-1].content
                     ),
                     name="data_preprocessor",
+                )
+            ]
+        },
+        goto="supervisor",
+    )
+
+def data_annotator_node(state: State) -> Command[Literal["supervisor"]]:
+    """Node for the data annotator agent that performs annotation on the processed data"""
+    logger.info("data annotator agent starting task")
+    result = data_annotator_agent.invoke(state)
+    logger.info("data annotator agent completed task")
+    logger.debug(f"data annotator agent response: {result['messages'][-1].content}")
+    return Command(
+        update={
+            "messages": [
+                HumanMessage(
+                    content=RESPONSE_FORMAT.format(
+                        "data_annotator", result["messages"][-1].content
+                    ),
+                    name="data_annotator",
                 )
             ]
         },

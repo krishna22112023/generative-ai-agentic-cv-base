@@ -1,0 +1,11 @@
+# Execution Rules 
+Detect <<CLASSES>>, with no more than 20 items.
+
+# Output Format 
+Output a json list where each entry contains the 2D bounding box in 'box_2d' and a text label in 'label'.
+Here's a simple example of the format : 
+[
+  {"box_2d": [205, 407, 397, 548], "label": "car"},
+  {"box_2d": [215, 417, 400, 500], "label": "pedestrian"},
+  {"box_2d": [115, 270, 300, 400], "label": "bike"}
+]

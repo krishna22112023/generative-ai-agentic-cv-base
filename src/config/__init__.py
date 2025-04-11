@@ -13,7 +13,7 @@ from .env import (
     VL_API_KEY
     # Other configurations
 )
-from .tools import IQA_API_KEY,MINIO_ENDPOINT_URL,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,BUCKET_NAME,ABS_PATH_TO_PYTHON_ENV
+from .tools import IQA_API_KEY,MINIO_ENDPOINT_URL,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,BUCKET_NAME,ABS_PATH_TO_PYTHON_ENV,ANNOTATION_MODEL,ANNOTATION_API_KEY
 
 # Team configuration
 TEAM_MEMBERS = ["data_collector", "data_quality", "data_preprocessor"]
@@ -38,5 +38,7 @@ __all__ = [
     "MINIO_ACCESS_KEY",
     "MINIO_SECRET_KEY",
     "BUCKET_NAME",
-    "ABS_PATH_TO_PYTHON_ENV"
+    "ABS_PATH_TO_PYTHON_ENV",
+    "ANNOTATION_MODEL",
+    "ANNOTATION_API_KEY"
 ]

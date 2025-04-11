@@ -10,5 +10,7 @@ AGENT_LLM_MAP: dict[str, LLMType] = {
     "data_collector": "basic",  
     "data_quality": "basic",  
     "data_preprocessor": "basic",  
+    "data_annotator": "basic",
+    "reporter":"basic"
 }
 

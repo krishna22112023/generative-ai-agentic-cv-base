@@ -53,7 +53,7 @@ class Read:
         # If the prefix exactly matches a single file key, download that file.
         if len(objects) == 1 and objects[0].get('Key') == prefix:
             key = objects[0].get('Key')
-            local_file_path = os.path.join(root, LOCAL_DIR, os.path.basename(key))
+            local_file_path = os.path.join(root, LOCAL_DIR, key)
             os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
             try:
                 self.client.download_file(Bucket=BUCKET_NAME, Key=key, Filename=local_file_path)
@@ -67,7 +67,7 @@ class Read:
             overall_success = True
             for obj in objects:
                 key = obj.get('Key')
-                local_file_path = os.path.join(root, LOCAL_DIR, os.path.basename(key))
+                local_file_path = os.path.join(root, LOCAL_DIR, key)
                 os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
                 try:
                     self.client.download_file(Bucket=BUCKET_NAME, Key=key, Filename=local_file_path)

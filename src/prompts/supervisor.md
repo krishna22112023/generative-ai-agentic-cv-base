@@ -17,4 +17,5 @@ Always respond with a valid JSON object containing only the 'next' key and a sin
 - **`data collector`**: Uses various API calls to a minio object storage server to list down, download, upload or delete files and/or folders within minio.
 - **`data quality`**: Assess the quality of images using a tool that uses a vision language model that identifies different degredation types, rates its severity from very low to very high and returns a summary of the quality of the images. 
 - **`data preprocessor`**: Creates a preprocessing pipeline based on the degredations identified and executes the pipeline for image restoration to enhance the quality of each image using a tool that uses Restormer.
+- **`data annotator`**: Performs bounding box annotations for images stored in personal file system and stores annotations in the yolo format.
 - **`reporter`**: Write a professional report based on the result of each step.

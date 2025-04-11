@@ -66,7 +66,7 @@ def openai_vlm_iqa(prefix: str) -> str:
     chain = prompt | llm.with_structured_output(schema=IQAResponse)
 
     results = {}
-    image_files = glob.glob(f"{root}/{LOCAL_DIR}/*.jpg")
+    image_files = glob.glob(f"{root}/{LOCAL_DIR}/{prefix}/*.jpg")
     total = len(image_files)
 
     logger.info({'status': f"Starting Image Quality Assessment on {total} images"})
@@ -87,7 +87,7 @@ def openai_vlm_iqa(prefix: str) -> str:
     logger.info({'status': f"Summarizing results on {total} images"})
             
     # Save raw results to image_dir/intermediate_results/iqa_results.json
-    intermediate_dir = os.path.join(root,"data","intermediate_results")
+    intermediate_dir = os.path.join(root,"data","intermediate_results",prefix)
     os.makedirs(intermediate_dir, exist_ok=True)
     intermediate_path = os.path.join(intermediate_dir, "iqa_results.json")
     with open(intermediate_path, 'w', encoding='utf-8') as outfile:

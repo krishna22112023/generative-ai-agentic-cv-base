@@ -97,7 +97,9 @@ class ImageRestormer:
             logger.error(msg)
             return msg 
     
-    def run_model(self, model, input_path, output_dir):
+    def run_model(self, model, input_path, output_dir, task_id):
+        # Ensure output directory exists
+        os.makedirs(output_dir, exist_ok=True)
         logger.info("Running inference using restormer")
         img_multiple_of = 8
         try:
@@ -123,11 +125,8 @@ class ImageRestormer:
                 restored = restored.permute(0, 2, 3, 1).cpu().detach().numpy()
                 restored = img_as_ubyte(restored[0])
 
-                # Ensure output directory exists
-                os.makedirs(output_dir, exist_ok=True)
                 # Save file with task prefix to keep intermediate states distinct
-                filename = os.path.split(input_path)[-1]
-                out_filename = f"{self.task}_{filename}"
+                out_filename = f"out_{task_id}"
                 out_file_path = os.path.join(output_dir,out_filename)
                 cv2.imwrite(out_file_path, cv2.cvtColor(restored, cv2.COLOR_RGB2BGR))
                 logger.info(f"Done ! Processed image saved to path : {out_file_path}")
@@ -158,13 +157,18 @@ def main(pipeline, input_dir, output_dir):
     for image, tasks in pipeline.items():
         logger.info(f"Processing {image}")
         image_path = os.path.join(input_dir, image) #image is the relative path from input_dir
+        image_output_dir = os.path.join(output_dir, os.path.basename(image).split('.')[0])
         current_input = image_path
-        for task in tasks:
-            logger.info(f"Applying {task} on {current_input}")
-            restormer_obj, model = model_cache[task]
-            # Use an output subfolder per image to keep intermediate outputs organized
-            image_output_dir = os.path.join(output_dir, os.path.splitext(os.path.basename(image_path))[0])
-            current_input = restormer_obj.run_model(model, current_input, image_output_dir)
+        if len(tasks)>0:
+            for task_id, task in enumerate(tasks):
+                logger.info(f"Applying {task} on {current_input}")
+                restormer_obj, model = model_cache[task]
+                # Use an output subfolder per image to keep intermediate outputs organized
+                current_input = restormer_obj.run_model(model, current_input, image_output_dir, task_id)
+        else:
+            logger.info("No preprocessing tasks to apply on this image.")
+            os.makedirs(image_output_dir, exist_ok=True)
+            cv2.imwrite(os.path.join(image_output_dir, "out_0"), cv2.imread(image_path))
     logger.info("Processing completed.")
 
 
