@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "lang-manus"
+name = "langgraph-cv-agent"
 version = "0.1.0"
-description = "Lang-Manus project"
+description = "langraph-cv-agent project"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
