@@ -3,6 +3,7 @@ Entry point script for the LangGraph Demo.
 """
 
 from src.workflow import run_agent_workflow
+import asyncio
 
 if __name__ == "__main__":
     import sys
@@ -15,7 +16,7 @@ if __name__ == "__main__":
         if user_query == "exit" or user_query == "quit":
             break
 
-        result = run_agent_workflow(user_input=user_query, debug=True)
+        result = asyncio.run(run_agent_workflow(user_input=user_query, debug=True))
 
         # Print the conversation history
         print("\n=== Conversation History ===")

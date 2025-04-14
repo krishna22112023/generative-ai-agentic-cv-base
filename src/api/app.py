@@ -14,7 +14,7 @@ import asyncio
 from typing import AsyncGenerator, Dict, List, Any
 
 from src.graph import build_graph
-from src.config import TEAM_MEMBERS
+from src.config import TEAM_MEMBERS,USE_MCP
 from src.service.workflow_service import run_agent_workflow
 
 # Configure logging
@@ -37,7 +37,7 @@ app.add_middleware(
 )
 
 # Create the graph
-graph = build_graph()
+graph = build_graph(use_mcp=USE_MCP)
 
 
 class ContentItem(BaseModel):

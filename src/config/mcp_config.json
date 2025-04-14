@@ -1,0 +1,31 @@
+{
+    "mcpServers": 
+    {
+        "minio": {
+            "command": "python",
+            "args": [
+              "/Users/krishnaiyer/generative-ai-agentic-cv-base/src/mcp/servers/minio.py"
+            ]
+        },
+        "IQA": {
+            "command": "python",
+            "args": [
+              "/Users/krishnaiyer/generative-ai-agentic-cv-base/src/mcp/servers/IQA.py"
+            ]
+        },
+        "IR": {
+            "command": "python",
+            "args": [
+              "/Users/krishnaiyer/generative-ai-agentic-cv-base/src/mcp/servers/IR.py"
+            ]
+        },
+        "annotator": {
+            "command": "python",
+            "args": [
+              "/Users/krishnaiyer/generative-ai-agentic-cv-base/src/mcp/servers/annotator.py"
+            ]
+        }
+        
+          
+    }
+}

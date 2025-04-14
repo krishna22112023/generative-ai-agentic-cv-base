@@ -19,3 +19,15 @@ ABS_PATH_TO_PYTHON_ENV = "/Users/krishnaiyer/miniforge3/envs/restormer/bin/pytho
 # Annotation configuration
 ANNOTATION_MODEL = os.getenv("ANNOTATION_MODEL", "gemini-2.5-pro-exp-03-25")
 ANNOTATION_API_KEY = os.getenv("ANNOTATION_API_KEY")
+
+MCP_TOOL_MAP: dict[str, list] = {
+    "coordinator": [],
+    "supervisor": [], 
+    "data_collector": ["minio"],  
+    "data_quality": ["IQA"],  
+    "data_preprocessor": ["IR"],  
+    "data_annotator": ["annotator"],
+    "reporter":[]
+}
+
+USE_MCP = True
