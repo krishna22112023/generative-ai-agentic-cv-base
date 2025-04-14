@@ -1,5 +1,5 @@
 import logging
-from src.config import TEAM_MEMBERS
+from src.config import TEAM_MEMBERS,USE_MCP
 from src.graph import build_graph
 
 # Configure logging
@@ -17,7 +17,7 @@ def enable_debug_logging():
 logger = logging.getLogger(__name__)
 
 # Create the graph
-graph = build_graph()
+graph = build_graph(use_mcp=USE_MCP)
 
 
 def run_agent_workflow(user_input: str, debug: bool = False):
@@ -37,16 +37,28 @@ def run_agent_workflow(user_input: str, debug: bool = False):
         enable_debug_logging()
 
     logger.info(f"Starting workflow with user input: {user_input}")
-    result = graph.invoke(
-        {
-            # Constants
-            "TEAM_MEMBERS": TEAM_MEMBERS,
-            # Runtime Variables
-            "messages": [{"role": "user", "content": user_input}],
-            "deep_thinking_mode": False,
-            "search_before_planning": False,
-        }
-    )
+    if USE_MCP:
+        result = graph.ainvoke(
+            {
+                # Constants
+                "TEAM_MEMBERS": TEAM_MEMBERS,
+                # Runtime Variables
+                "messages": [{"role": "user", "content": user_input}],
+                "deep_thinking_mode": False,
+                "search_before_planning": False,
+            }
+        )
+    else:
+        result = graph.invoke(
+            {
+                # Constants
+                "TEAM_MEMBERS": TEAM_MEMBERS,
+                # Runtime Variables
+                "messages": [{"role": "user", "content": user_input}],
+                "deep_thinking_mode": False,
+                "search_before_planning": False,
+            }
+        )
     logger.debug(f"Final workflow state: {result}")
     logger.info("Workflow completed successfully")
     return result

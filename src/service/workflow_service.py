@@ -1,6 +1,6 @@
 import logging
 
-from src.config import TEAM_MEMBERS
+from src.config import TEAM_MEMBERS,USE_MCP
 from src.graph import build_graph
 from langchain_community.adapters.openai import convert_message_to_dict
 import uuid
@@ -20,7 +20,7 @@ def enable_debug_logging():
 logger = logging.getLogger(__name__)
 
 # Create the graph
-graph = build_graph()
+graph = build_graph(use_mcp=USE_MCP)
 
 # Cache for coordinator messages
 coordinator_cache = []

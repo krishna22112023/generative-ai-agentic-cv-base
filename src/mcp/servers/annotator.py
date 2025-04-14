@@ -6,21 +6,21 @@ import glob
 import json
 import logging
 from typing import List
+from mcp.server.fastmcp import FastMCP
+
 logger = logging.getLogger(__name__)
 
-
-from langchain_core.tools import tool
 from google import genai
 from src.config.tools import ANNOTATION_API_KEY,ANNOTATION_MODEL
 
-from .decorators import log_io
 from src.utils.annotations import convert_annotations,get_processed_files
 
 root = pyprojroot.find_root(pyprojroot.has_dir("src"))
 sys.path.append(str(root))
 
-@tool
-@log_io
+mcp = FastMCP("annotator")
+
+@mcp.tool
 def gemini_annotator(prefix:str, classes: List[str], format: str) -> bool:
     """
     Annotates images in the specified directory with bounding boxes and class labels.
@@ -82,4 +82,4 @@ def gemini_annotator(prefix:str, classes: List[str], format: str) -> bool:
         return False                    
 
 if __name__ == "__main__":
-    gemini_annotator("DAWN/Rain", ["Car"], "yolo")
+    mcp.run(transport="stdio")

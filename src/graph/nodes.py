@@ -6,6 +6,7 @@ from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 
 from src.agents import data_collector_agent, data_quality_agent, data_preprocessor_agent, data_annotator_agent
+from src.agents import get_react_agent_mcp
 from src.agents.llm import get_llm_by_type
 from src.config import TEAM_MEMBERS
 from src.config.agents import AGENT_LLM_MAP
@@ -37,6 +38,29 @@ def data_collection_node(state: State) -> Command[Literal["supervisor"]]:
         goto="supervisor",
     )
 
+async def data_collection_anode(state: State) -> Command[Literal["supervisor"]]:
+    """Node for the data collection agent with mcp connection to data sources"""
+    logger.info("Data Collection agent starting task")
+    client,data_collector_agent = await get_react_agent_mcp("data_collector")
+    result = await data_collector_agent.ainvoke(state)
+    logger.info("Data Collection agent completed task")
+    logger.debug(f"Data Collection agent response: {result['messages'][-1].content}")
+    await client.cleanup()
+    return Command(
+        update={
+            "messages": [
+                HumanMessage(
+                    content=RESPONSE_FORMAT.format(
+                        "data_collector", result["messages"][-1].content
+                    ),
+                    name="data_collector",
+                )
+            ]
+        },
+        goto="supervisor",
+    )
+
+
 
 def data_quality_node(state: State) -> Command[Literal["supervisor"]]:
     """Node for the data quality agent that assess quality of image data from external data sources."""
@@ -58,6 +82,27 @@ def data_quality_node(state: State) -> Command[Literal["supervisor"]]:
         goto="supervisor",
     )
 
+async def data_quality_anode(state: State) -> Command[Literal["supervisor"]]:
+    """Node for the data quality agent that assess quality of image data from external data sources."""
+    logger.info("data quality agent starting task")
+    client,data_quality_agent = await get_react_agent_mcp("data_quality")
+    result = await data_quality_agent.ainvoke(state)
+    logger.info("data quality agent completed task")
+    logger.debug(f"data quality agent response: {result['messages'][-1].content}")
+    await client.cleanup()
+    return Command(
+        update={
+            "messages": [
+                HumanMessage(
+                    content=RESPONSE_FORMAT.format(
+                        "data_quality", result["messages"][-1].content
+                    ),
+                    name="data_quality",
+                )
+            ]
+        },
+        goto="supervisor",
+    )
 
 def data_preprocessor_node(state: State) -> Command[Literal["supervisor"]]:
     """Node for the data preprocessor agent that performs image restoration based on the quality assessment"""
@@ -79,12 +124,56 @@ def data_preprocessor_node(state: State) -> Command[Literal["supervisor"]]:
         goto="supervisor",
     )
 
+async def data_preprocessor_anode(state: State) -> Command[Literal["supervisor"]]:
+    """Node for the data preprocessor agent that performs image restoration based on the quality assessment"""
+    logger.info("data preprocessor agent starting task")
+    client,data_preprocessor_agent = await get_react_agent_mcp("data_preprocessor")
+    result = await data_preprocessor_agent.ainvoke(state)
+    logger.info("data preprocessor agent completed task")
+    logger.debug(f"data preprocessor agent response: {result['messages'][-1].content}")
+    await client.cleanup()
+    return Command(
+        update={
+            "messages": [
+                HumanMessage(
+                    content=RESPONSE_FORMAT.format(
+                        "data_preprocessor", result["messages"][-1].content
+                    ),
+                    name="data_preprocessor",
+                )
+            ]
+        },
+        goto="supervisor",
+    )
+
 def data_annotator_node(state: State) -> Command[Literal["supervisor"]]:
     """Node for the data annotator agent that performs annotation on the processed data"""
     logger.info("data annotator agent starting task")
     result = data_annotator_agent.invoke(state)
     logger.info("data annotator agent completed task")
     logger.debug(f"data annotator agent response: {result['messages'][-1].content}")
+    return Command(
+        update={
+            "messages": [
+                HumanMessage(
+                    content=RESPONSE_FORMAT.format(
+                        "data_annotator", result["messages"][-1].content
+                    ),
+                    name="data_annotator",
+                )
+            ]
+        },
+        goto="supervisor",
+    )
+
+async def data_annotator_anode(state: State) -> Command[Literal["supervisor"]]:
+    """Node for the data annotator agent that performs annotation on the processed data"""
+    logger.info("data annotator agent starting task")
+    client,data_preprocessor_agent = await get_react_agent_mcp("data_annotator")
+    result = await data_preprocessor_agent.ainvoke(state)
+    logger.info("data annotator agent completed task")
+    logger.debug(f"data annotator agent response: {result['messages'][-1].content}")
+    await client.cleanup()
     return Command(
         update={
             "messages": [
