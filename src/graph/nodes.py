@@ -45,7 +45,6 @@ async def data_collection_anode(state: State) -> Command[Literal["supervisor"]]:
     result = await data_collector_agent.ainvoke(state)
     logger.info("Data Collection agent completed task")
     logger.debug(f"Data Collection agent response: {result['messages'][-1].content}")
-    await client.cleanup()
     return Command(
         update={
             "messages": [
@@ -89,7 +88,6 @@ async def data_quality_anode(state: State) -> Command[Literal["supervisor"]]:
     result = await data_quality_agent.ainvoke(state)
     logger.info("data quality agent completed task")
     logger.debug(f"data quality agent response: {result['messages'][-1].content}")
-    await client.cleanup()
     return Command(
         update={
             "messages": [
@@ -131,7 +129,6 @@ async def data_preprocessor_anode(state: State) -> Command[Literal["supervisor"]
     result = await data_preprocessor_agent.ainvoke(state)
     logger.info("data preprocessor agent completed task")
     logger.debug(f"data preprocessor agent response: {result['messages'][-1].content}")
-    await client.cleanup()
     return Command(
         update={
             "messages": [
@@ -145,6 +142,7 @@ async def data_preprocessor_anode(state: State) -> Command[Literal["supervisor"]
         },
         goto="supervisor",
     )
+
 
 def data_annotator_node(state: State) -> Command[Literal["supervisor"]]:
     """Node for the data annotator agent that performs annotation on the processed data"""
@@ -173,7 +171,6 @@ async def data_annotator_anode(state: State) -> Command[Literal["supervisor"]]:
     result = await data_preprocessor_agent.ainvoke(state)
     logger.info("data annotator agent completed task")
     logger.debug(f"data annotator agent response: {result['messages'][-1].content}")
-    await client.cleanup()
     return Command(
         update={
             "messages": [

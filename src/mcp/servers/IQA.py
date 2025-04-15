@@ -17,6 +17,7 @@ from pathlib import Path
 import pyprojroot
 
 from src.agents.llm import get_llm_by_type
+from decorators import log_io
 
 root = pyprojroot.find_root(pyprojroot.has_dir("src"))
 sys.path.append(str(root))
@@ -42,6 +43,7 @@ def resize_image(image_path, max_size=(512, 512)):
 LOCAL_DIR = "data/raw"
 
 @mcp.tool()
+@log_io
 def openai_vlm_iqa(prefix: str) -> str:
     """
     Assess the quality of images in a directory using a pre-trained model based on 7 degredations that include 

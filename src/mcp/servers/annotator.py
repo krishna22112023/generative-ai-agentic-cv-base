@@ -14,13 +14,15 @@ from google import genai
 from src.config.tools import ANNOTATION_API_KEY,ANNOTATION_MODEL
 
 from src.utils.annotations import convert_annotations,get_processed_files
+from decorators import log_io
 
 root = pyprojroot.find_root(pyprojroot.has_dir("src"))
 sys.path.append(str(root))
 
 mcp = FastMCP("annotator")
 
-@mcp.tool
+@mcp.tool()
+@log_io
 def gemini_annotator(prefix:str, classes: List[str], format: str) -> bool:
     """
     Annotates images in the specified directory with bounding boxes and class labels.
@@ -34,12 +36,9 @@ def gemini_annotator(prefix:str, classes: List[str], format: str) -> bool:
         format = "yolo"
 
     #get files 
-    try:
-        files = get_processed_files(f"{root}/data/processed/{prefix}")
-    except Exception as e:
-        msg = f"Error while retrieving processed files: {e}"
-        logger.warning(msg)
-        logger.info("Trying a different root path")
+    files = get_processed_files(f"{root}/data/processed/{prefix}")
+    if len(files) == 0:
+        logger.info("No processed files found. Trying a different root path")
         files = glob.glob(f"{root}/data/raw/{prefix}/*.jpg")
 
     logger.info({f"Drawing bounding boxes for {len(files)} images"})
@@ -49,7 +48,11 @@ def gemini_annotator(prefix:str, classes: List[str], format: str) -> bool:
 
         with open(f"{root}/src/prompts/gemini_annotator.txt", 'r', encoding='utf-8') as f:
             prompt = f.read()
-        prompt = prompt.replace("<<CLASSES>>", ", ".join(classes))
+        if len(classes) > 0:
+            prompt = prompt.replace("Detect <<CLASSES>>, with no more than 20 items.", f"Detect {", ".join(classes)}, with no more than 10 items.")
+        else:
+            prompt = prompt.replace("Detect <<CLASSES>>, with no more than 20 items.", "Detect all objects with no more than 10 items.")
+
 
         out_dir = f"{root}/data/processed/{prefix}/annotations"
         os.makedirs(out_dir, exist_ok=True)

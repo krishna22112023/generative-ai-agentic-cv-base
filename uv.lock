@@ -902,68 +902,6 @@ wheels = [
 ]
 
 [[package]]
-name = "lang-manus"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "browser-use" },
-    { name = "fastapi" },
-    { name = "google-genai" },
-    { name = "httpx" },
-    { name = "langchain-community" },
-    { name = "langchain-deepseek" },
-    { name = "langchain-experimental" },
-    { name = "langchain-openai" },
-    { name = "langgraph" },
-    { name = "markdownify" },
-    { name = "numpy" },
-    { name = "pandas" },
-    { name = "pyprojroot" },
-    { name = "python-dotenv" },
-    { name = "readabilipy" },
-    { name = "socksio" },
-    { name = "sse-starlette" },
-    { name = "uvicorn" },
-    { name = "yfinance" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "black" },
-]
-test = [
-    { name = "pytest" },
-    { name = "pytest-cov" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "black", marker = "extra == 'dev'", specifier = ">=24.2.0" },
-    { name = "browser-use", specifier = ">=0.1.0" },
-    { name = "fastapi", specifier = ">=0.110.0" },
-    { name = "google-genai" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "langchain-community", specifier = ">=0.3.19" },
-    { name = "langchain-deepseek", specifier = ">=0.1.2" },
-    { name = "langchain-experimental", specifier = ">=0.3.4" },
-    { name = "langchain-openai", specifier = ">=0.3.8" },
-    { name = "langgraph", specifier = ">=0.3.5" },
-    { name = "markdownify", specifier = ">=1.1.0" },
-    { name = "numpy", specifier = ">=2.2.3" },
-    { name = "pandas", specifier = ">=2.2.3" },
-    { name = "pyprojroot" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=7.4.0" },
-    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.1.0" },
-    { name = "python-dotenv", specifier = ">=1.0.1" },
-    { name = "readabilipy", specifier = ">=0.3.0" },
-    { name = "socksio", specifier = ">=1.0.0" },
-    { name = "sse-starlette", specifier = ">=1.6.5" },
-    { name = "uvicorn", specifier = ">=0.27.1" },
-    { name = "yfinance", specifier = ">=0.2.54" },
-]
-provides-extras = ["dev", "test"]
-
-[[package]]
 name = "langchain"
 version = "0.3.20"
 source = { registry = "https://pypi.org/simple" }
@@ -1161,6 +1099,68 @@ sdist = { url = "https://files.pythonhosted.org/packages/76/1d/27a178de8a40c0cd5
 wheels = [
     { url = "https://files.pythonhosted.org/packages/21/11/91062b03b22b9ce6474df7c3e056417a4c2b029f9cc71829dd6f62479dd0/langgraph_checkpoint-2.0.18-py3-none-any.whl", hash = "sha256:941de442e5a893a6cabb8c3845f03159301b85f63ff4e8f2b308f7dfd96a3f59", size = 39106 },
 ]
+
+[[package]]
+name = "langgraph-cv-agent"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "browser-use" },
+    { name = "fastapi" },
+    { name = "google-genai" },
+    { name = "httpx" },
+    { name = "langchain-community" },
+    { name = "langchain-deepseek" },
+    { name = "langchain-experimental" },
+    { name = "langchain-openai" },
+    { name = "langgraph" },
+    { name = "markdownify" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "pyprojroot" },
+    { name = "python-dotenv" },
+    { name = "readabilipy" },
+    { name = "socksio" },
+    { name = "sse-starlette" },
+    { name = "uvicorn" },
+    { name = "yfinance" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "black" },
+]
+test = [
+    { name = "pytest" },
+    { name = "pytest-cov" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "black", marker = "extra == 'dev'", specifier = ">=24.2.0" },
+    { name = "browser-use", specifier = ">=0.1.0" },
+    { name = "fastapi", specifier = ">=0.110.0" },
+    { name = "google-genai" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "langchain-community", specifier = ">=0.3.19" },
+    { name = "langchain-deepseek", specifier = ">=0.1.2" },
+    { name = "langchain-experimental", specifier = ">=0.3.4" },
+    { name = "langchain-openai", specifier = ">=0.3.8" },
+    { name = "langgraph", specifier = ">=0.3.5" },
+    { name = "markdownify", specifier = ">=1.1.0" },
+    { name = "numpy", specifier = ">=2.2.3" },
+    { name = "pandas", specifier = ">=2.2.3" },
+    { name = "pyprojroot" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=7.4.0" },
+    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.1.0" },
+    { name = "python-dotenv", specifier = ">=1.0.1" },
+    { name = "readabilipy", specifier = ">=0.3.0" },
+    { name = "socksio", specifier = ">=1.0.0" },
+    { name = "sse-starlette", specifier = ">=1.6.5" },
+    { name = "uvicorn", specifier = ">=0.27.1" },
+    { name = "yfinance", specifier = ">=0.2.54" },
+]
+provides-extras = ["dev", "test"]
 
 [[package]]
 name = "langgraph-prebuilt"

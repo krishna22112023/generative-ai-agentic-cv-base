@@ -3,12 +3,14 @@ from mcp.server.fastmcp import FastMCP
 from typing import Annotated
 
 from src.utils import read,create,delete
+from decorators import log_io
 
 logger = logging.getLogger(__name__)
 
 mcp = FastMCP("minio")
 
 @mcp.tool()
+@log_io
 def list_objects(prefix: Annotated[str, "Sub-folder name in minio bucket"]) -> list:
     """
     List objects in the bucket under the prefix.
@@ -22,6 +24,7 @@ def list_objects(prefix: Annotated[str, "Sub-folder name in minio bucket"]) -> l
         return error_message
 
 @mcp.tool()
+@log_io
 def download_objects(prefix: Annotated[str, "Sub-folder name in minio bucket"]) -> bool:
     """
     Download all objects under a given prefix and preserve the folder structure locally.
@@ -35,6 +38,7 @@ def download_objects(prefix: Annotated[str, "Sub-folder name in minio bucket"]) 
         return error_message
 
 @mcp.tool()
+@log_io
 def upload_objects(file_path: Annotated[str, "Local file path to folder/filename"], prefix: Annotated[str, "Sub-folder name in minio bucket"]) -> bool:
     """
     Upload a single file or directory of files to the bucket at the given prefix.
@@ -48,6 +52,7 @@ def upload_objects(file_path: Annotated[str, "Local file path to folder/filename
         return error_message
 
 @mcp.tool()
+@log_io
 def delete_objects(prefix: Annotated[str, "Sub-folder name in minio bucket"]) -> bool:
     """
     Delete all objects under a given prefix (simulating a folder).
