@@ -84,7 +84,7 @@ def openai_vlm_iqa(prefix: str) -> str:
         except json.JSONDecodeError as e:
             results[f"{LOCAL_DIR}/{prefix}/{Path(file).name}"] = {"error": "JSON decode error", "detail": str(e)}
         
-    logger.info({'status': f"Summarizing results on {total} images"})
+    logger.info({'status': f"Summarizing image quality results on {total} images. Showing top 5 only."})
             
     # Save raw results to image_dir/intermediate_results/iqa_results.json
     intermediate_dir = os.path.join(root,"data","intermediate_results",prefix)

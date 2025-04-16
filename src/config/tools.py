@@ -30,4 +30,4 @@ MCP_TOOL_MAP: dict[str, list] = {
     "reporter":[]
 }
 
-USE_MCP = True
+USE_MCP = False

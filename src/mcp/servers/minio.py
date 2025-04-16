@@ -16,6 +16,7 @@ def list_objects(prefix: Annotated[str, "Sub-folder name in minio bucket"]) -> l
     List objects in the bucket under the prefix.
     """
     try:
+        logger.info(f"Reading objects with prefix '{prefix}' from minio")
         return str(read.list_object(prefix))
     except Exception as e:
         # Catch any other exceptions
@@ -30,6 +31,7 @@ def download_objects(prefix: Annotated[str, "Sub-folder name in minio bucket"]) 
     Download all objects under a given prefix and preserve the folder structure locally.
     """
     try:
+        logger.info(f"Downloading objects with prefix '{prefix}' to local folder:'data/raw/{prefix}'")
         return read.download_object(prefix)
     except Exception as e:
         # Catch any other exceptions
@@ -44,6 +46,7 @@ def upload_objects(file_path: Annotated[str, "Local file path to folder/filename
     Upload a single file or directory of files to the bucket at the given prefix.
     """
     try:
+        logger.info(f"Uploading objects with prefix '{prefix}' from {file_path}")
         return create.upload_object(file_path,prefix)
     except Exception as e:
         # Catch any other exceptions
@@ -58,6 +61,7 @@ def delete_objects(prefix: Annotated[str, "Sub-folder name in minio bucket"]) ->
     Delete all objects under a given prefix (simulating a folder).
     """
     try:
+        logger.info(f"Deleting objects with prefix '{prefix}'")
         return delete.delete_object(prefix)
     except Exception as e:
         # Catch any other exceptions

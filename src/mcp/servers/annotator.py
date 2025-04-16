@@ -36,12 +36,11 @@ def gemini_annotator(prefix:str, classes: List[str], format: str) -> bool:
         format = "yolo"
 
     #get files 
+    logger.info("Retrieving processed images for annotation")
     files = get_processed_files(f"{root}/data/processed/{prefix}")
     if len(files) == 0:
         logger.info("No processed files found. Trying a different root path")
         files = glob.glob(f"{root}/data/raw/{prefix}/*.jpg")
-
-    logger.info({f"Drawing bounding boxes for {len(files)} images"})
 
     try: 
         client = genai.Client(api_key=ANNOTATION_API_KEY)
@@ -49,8 +48,10 @@ def gemini_annotator(prefix:str, classes: List[str], format: str) -> bool:
         with open(f"{root}/src/prompts/gemini_annotator.txt", 'r', encoding='utf-8') as f:
             prompt = f.read()
         if len(classes) > 0:
+            logger.info(f"Detecting custom labels {classes}")
             prompt = prompt.replace("Detect <<CLASSES>>, with no more than 20 items.", f"Detect {", ".join(classes)}, with no more than 10 items.")
         else:
+            logger.info("Detecting all possible labels")
             prompt = prompt.replace("Detect <<CLASSES>>, with no more than 20 items.", "Detect all objects with no more than 10 items.")
 
 
@@ -61,6 +62,8 @@ def gemini_annotator(prefix:str, classes: List[str], format: str) -> bool:
         with open(out_dir + "/classes.txt", "w") as f:
             for class_name in classes:
                 f.write(f"{class_name.lower()}\n")
+
+        logger.info({f"Collecting bounding boxes for {len(files)} images"})
 
         for file in files:
             file_ref = client.files.upload(file=file)
@@ -78,6 +81,7 @@ def gemini_annotator(prefix:str, classes: List[str], format: str) -> bool:
                 with open(out_dir + "/" + os.path.basename(file).split('.')[0] + ".txt", "w") as f:
                     for ann in annotations:
                         f.write(f"{ann}\n")
+        logger.info(f"Image annotations saved in YOLO format in local path: {out_dir}")
         return True
     except Exception as e:
         msg = f"Error annotating images: {e}"
