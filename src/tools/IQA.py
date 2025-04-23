@@ -1,114 +1,102 @@
-from langchain_core.tools import tool
-from langchain_core.prompts import (
-    ChatPromptTemplate,
-    MessagesPlaceholder, SystemMessagePromptTemplate
-)
-from pydantic import BaseModel, Field
-from typing import List
-
-import sys
-from PIL import Image
-import io
-import logging
 import os
-import base64
-import glob
-import json
-from pathlib import Path
-import pyprojroot
+import logging
+from typing import Tuple, Dict
 
-from src.agents.llm import get_llm_by_type
+from langchain_core.tools import tool
 from .decorators import log_io
 
-root = pyprojroot.find_root(pyprojroot.has_dir("src"))
-sys.path.append(str(root))
+from src.utils.IQA import nr_iqa,fr_iqa,vlm_nr_iqa
+from src.config import PATHS
 
 logger = logging.getLogger(__name__)
 
-class Degradation(BaseModel):
-    degradation: str = Field(..., description="One of the seven degradation types.")
-    thought: str = Field(..., description="The assessment thought for the degradation.")
-    severity: str = Field(..., description="Severity rating (very low, low, medium, high, very high).")
+@tool()
+@log_io
+def no_reference_iqa(prefix:str) -> Tuple[Dict,Dict]:
+    """
+    Computes no-reference image quality assessment (NR-IQA) using pretrained models,
+    without needing a reference image.
 
-class IQAResponse(BaseModel):
-    items: List[Degradation]
+    The function relies on the following folder structure under the given prefix:
+    - Raw images: PATHS['raw']/{prefix}
+    - Artefacts (logs, outputs): PATHS['artefacts']/{prefix}
 
-def resize_image(image_path, max_size=(512, 512)):
-    with Image.open(image_path) as img:
-        img.thumbnail(max_size)
-        buf = io.BytesIO()
-        img.save(buf, format='JPEG')
-        return buf.getvalue()
+    The function currently supports two methods:
+    
+    1. **brisque**:
+       - Predicts the BRISQUE score using a support vector regression (SVR) model trained on an image database
+         with corresponding differential mean opinion score (DMOS) values.
+       - Score range: [0, 100], where 100 indicates the worst quality and 0 is excellent.
 
-LOCAL_DIR = "data/raw"
+    2. **qalign**:
+       - Rates image quality on a categorical scale: Excellent, Good, Fair, Poor, Bad.
+       - Computes a weighted average of the probabilities for each class.
+       - Score range: [1, 5], where 5 is excellent and 1 is bad.
+
+    Based on these metrics, the function uses a VLM to classify images into the following seven degradation types:
+    - Noise
+    - Motion Blur
+    - Defocus Blur
+    - Haze
+    - Rain
+    - Dark
+    - JPEG Compression Artifact
+
+    Each degradation is assigned one of five severity levels:
+    - Very Low
+    - Low
+    - Medium
+    - High
+    - Very High
+
+    Args:
+        prefix (str): prefix name in minio bucket
+
+    Returns:
+        Tuple: Returns a dictionary of all metrics for each each image and the average score across all images in the input folder.
+    """
+    input_path = f"{PATHS['raw']}/{prefix}"
+    artefacts_path = f"{PATHS['artefacts']}/{prefix}"
+    os.makedirs(artefacts_path,exist_ok=True)
+    nr_iqa_scores, mean_nr_iqa_scores = nr_iqa(input_path, artefacts_path)
+    vlm_nr_iqa_scores, agg_vlm_nr_iqa_scores = vlm_nr_iqa(input_path,artefacts_path,nr_iqa_scores)
+
+    return mean_nr_iqa_scores,agg_vlm_nr_iqa_scores
+
 
 @tool()
 @log_io
-def openai_vlm_iqa(prefix: str) -> str:
+def full_reference_iqa(prefix:str) -> Tuple[Dict,Dict]: 
     """
-    Assess the quality of images in a directory using a pre-trained model based on 7 degredations that include 
-    noise, motion blur, defocus blur, haze, rain, dark, and jpeg compression artifact and classify them into 5 severity levels 
-    namely "very low", "low", "medium", "high", and "very high".
-    Infer the prefix from the user's request. The user can either specify prefix of files in minIO or local file system.
+    Computes full-reference image quality assessment (FR-IQA) scores for images in a given MinIO bucket prefix.
+    
+    This function compares processed images against their corresponding reference images using standard 
+    full-reference IQA metrics. The comparison is done on a per-image basis and supports multiple metrics 
+    including PSNR, SSIM, MSE, and GMSD.
+
+    The function relies on the following folder structure under the given prefix:
+    - Processed images: PATHS['processed']/{prefix}
+    - Reference images: PATHS['raw']/{prefix}
+    - Artefacts (logs, outputs): PATHS['artefacts']/{prefix}
+
+    Supported metrics:
+    - PSNR (Peak Signal-to-Noise Ratio)
+    - SSIM (Structural Similarity Index)
+    - MSE (Mean Squared Error)
+    - GMSD (Gradient Magnitude Similarity Deviation)
+
+    Args:
+        prefix (str): The prefix name used to locate folders in the MinIO bucket.
+
+    Returns:
+        Tuple[Dict[str, Dict[str, float]], Dict[str, float]]:
+            - A nested dictionary mapping each filename to its computed metrics.
+            - A dictionary of mean metric scores across all processed images.
     """
-    llm = get_llm_by_type("vision")
+    input_path = f"{PATHS['processed']}/{prefix}"
+    reference_path = f"{PATHS['raw']}/{prefix}"
+    artefacts_path = f"{PATHS['artefacts']}/{prefix}" 
+    os.makedirs(artefacts_path,exist_ok=True)
+    scores, mean_scores = fr_iqa(input_path, artefacts_path, reference_path)
+    return scores,mean_scores
 
-    # Inject the output parser’s instructions into your system prompt.
-    fp_prompt = f"{root}/src/prompts/openai_iqa.md"
-    with open(fp_prompt, 'r', encoding='utf-8') as f:
-        prompt_template = f.read()
-
-    system_template = SystemMessagePromptTemplate.from_template(prompt_template)
-    # system_template = hub.pull(agent_config.LANGSMITH_PROMPT_TEMPLATE_NAME)
-
-    messages = MessagesPlaceholder(variable_name='messages')
-    prompt = ChatPromptTemplate.from_messages([system_template, messages])
-    chain = prompt | llm.with_structured_output(schema=IQAResponse)
-
-    results = {}
-    image_files = glob.glob(f"{root}/{LOCAL_DIR}/{prefix}/*.jpg")
-    total = len(image_files)
-
-    logger.info({'status': f"Starting Image Quality Assessment on {total} images"})
-
-    for file in image_files:
-        image_data = resize_image(file)
-        encoded_data = base64.b64encode(image_data).decode('utf-8')
-        message = [{"role": "user", "content": f"data:image/jpeg;base64,{encoded_data}"}]
-        response = chain.invoke({"messages": message})
-        try:
-            parsed = response.model_dump()["items"]
-            # Filter out degradations with severity "high" or "very high"
-            #filtered = [item for item in parsed if item.get("severity") in ("high", "very high")]
-            results[f"{LOCAL_DIR}/{prefix}/{Path(file).name}"] = parsed
-        except json.JSONDecodeError as e:
-            results[f"{LOCAL_DIR}/{prefix}/{Path(file).name}"] = {"error": "JSON decode error", "detail": str(e)}
-        
-    logger.info({'status': f"Summarizing results on {total} images"})
-            
-    # Save raw results to image_dir/intermediate_results/iqa_results.json
-    intermediate_dir = os.path.join(root,"data","intermediate_results",prefix)
-    os.makedirs(intermediate_dir, exist_ok=True)
-    intermediate_path = os.path.join(intermediate_dir, "iqa_results.json")
-    with open(intermediate_path, 'w', encoding='utf-8') as outfile:
-        json.dump(results, outfile, indent=4)
-    
-    # Create aggregated results table.
-    # Columns are degradation types; rows are severity levels.
-    degradations = ["noise", "motion blur", "defocus blur", "haze", "rain", "dark", "jpeg compression artifact"]
-    severities = ["very low", "low", "medium","high", "very high"]
-    aggregated = {sev: {deg: 0 for deg in degradations} for sev in severities}
-    
-    for items in results.values():
-        if isinstance(items, list):
-            for item in items:
-                sev = item.get("severity")
-                deg = item.get("degradation")
-                if sev in severities and deg in degradations:
-                    aggregated[sev][deg] += 1
-    with open(os.path.join(intermediate_dir, "iqa_results_aggregated.json"), 'w', encoding='utf-8') as outfile:
-        json.dump(aggregated, outfile, indent=4)
-
-    return json.dumps(aggregated, indent=4)
-    
-    

@@ -27,8 +27,15 @@ dependencies = [
     "yfinance>=0.2.54",
     "langchain-deepseek>=0.1.2",
     "pyprojroot",
-    "google-genai"
-]
+    "google-genai",
+    "opencv-contrib-python",
+    "torch",
+    "transformers==4.36.2",
+    "accelerate",
+    "sentencepiece",
+    "icecream",
+    "mcp",
+    "langchain-mcp-adapters"]
 
 [project.optional-dependencies]
 dev = [

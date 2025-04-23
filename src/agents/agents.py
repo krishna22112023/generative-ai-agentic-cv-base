@@ -5,11 +5,12 @@ from src.tools import (
     list_objects,
     download_objects,
     upload_objects,
-    delete_objects,
-    openai_vlm_iqa,
+    no_reference_iqa,
     create_ir_pipeline,
     run_ir_pipeline,
-    gemini_annotator
+    gemini_annotator,
+    list_dir_local,
+    get_dir_metadata_local
 )
 
 from .llm import get_llm_by_type
@@ -19,13 +20,13 @@ from src.config.agents import AGENT_LLM_MAP
 
 data_collector_agent = create_react_agent(
     get_llm_by_type(AGENT_LLM_MAP["data_collector"]),
-    tools=[list_objects,download_objects,upload_objects,delete_objects],
+    tools=[list_objects,download_objects,upload_objects,list_dir_local,get_dir_metadata_local],
     prompt=lambda state: apply_prompt_template("data_collector", state),
 )
 
 data_quality_agent = create_react_agent(
     get_llm_by_type(AGENT_LLM_MAP["data_quality"]),
-    tools=[openai_vlm_iqa],
+    tools=[no_reference_iqa],
     prompt=lambda state: apply_prompt_template("data_quality", state),
 )
 

@@ -11,8 +11,6 @@ root = pyprojroot.find_root(pyprojroot.has_dir("src"))
 
 logger = logging.getLogger(__name__)
 
-LOCAL_DIR = "data/raw"
-
 class Read:
 
     def __init__(self):
@@ -21,61 +19,55 @@ class Read:
                                 aws_access_key_id=MINIO_ACCESS_KEY,
                                 aws_secret_access_key=MINIO_SECRET_KEY)
 
-    def list_object(self, prefix: str) -> List[Dict[str, Any]]:
+    def list_object(self, input_path: str) -> List[Dict[str, Any]]:
         """
-        List objects in the bucket. Use the prefix to emulate folder listing.
+        List objects in the bucket. Use the input_path to emulate folder listing.
         """
+        logger.info(f"listing objects in minio bucket with prefix : {input_path}")
         try:
             response = self.client.list_objects_v2(
                 Bucket=BUCKET_NAME, 
-                Prefix=prefix, 
+                Prefix=input_path, 
                 MaxKeys=1000
             )
             objects = response.get('Contents', [])
-            logger.info(f"Found {len(objects)} objects with prefix '{prefix}' in bucket {BUCKET_NAME}")
+            logger.info(f"Found {len(objects)} objects with input_path '{input_path}' in bucket {BUCKET_NAME}")
             return objects
         except ClientError as e:
-            logger.error(f"Error listing objects with prefix '{prefix}' in bucket {BUCKET_NAME}: {e}")
+            logger.error(f"Error listing objects with input_path '{input_path}' in bucket {BUCKET_NAME}: {e}")
             return []
 
-    def download_object(self, prefix: str) -> bool:
+    def download_object(self, input_path: str, output_path: str) -> bool:
+        """_summary_
+
+        Args:
+            input_path (str): path to minio bucket folder
+            output_path (str): path to local directory where the data will be downloaded
+
+        Returns:
+            bool: whether the download was successful (True/False)
         """
-        Download objects under the given prefix.
-        If the prefix exactly matches a single file key, download that file.
-        If the prefix represents a directory (matches multiple objects), download all objects under it,
-        preserving the folder structure locally.
-        """
-        objects = self.list_object(prefix)
+        objects = self.list_object(input_path)
         if not objects:
-            logger.error(f"No objects found with prefix '{prefix}'.")
+            logger.error(f"No objects found with input_path '{input_path}'.")
             return False
 
-        # If the prefix exactly matches a single file key, download that file.
-        if len(objects) == 1 and objects[0].get('Key') == prefix:
-            key = objects[0].get('Key')
-            local_file_path = os.path.join(root, LOCAL_DIR, key)
+        # Treat the input_path as a directory and download all objects.
+        # The object key includes the prefix like so : prefix_name/file_name.extension
+        overall_success = True
+        for obj in objects:
+            key = obj.get('Key')
+            logger.info(f"minio object key found {key} ")
+            local_file_path = os.path.join(output_path, key)
+            logger.info(f"creating a directory if does not exist {os.path.dirname(local_file_path)}")
             os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
             try:
                 self.client.download_file(Bucket=BUCKET_NAME, Key=key, Filename=local_file_path)
-                logger.info(f"Downloaded {key} to {local_file_path}")
-                return True
+                logger.info(f"Downloaded {key} to {output_path}")
             except ClientError as e:
-                logger.error(f"Error downloading {key}: {e}")
-                return False
-        else:
-            # Treat the prefix as a directory and download all objects.
-            overall_success = True
-            for obj in objects:
-                key = obj.get('Key')
-                local_file_path = os.path.join(root, LOCAL_DIR, key)
-                os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
-                try:
-                    self.client.download_file(Bucket=BUCKET_NAME, Key=key, Filename=local_file_path)
-                    logger.info(f"Downloaded {key} to {local_file_path}")
-                except ClientError as e:
-                    logger.error(f"Error downloading {key}: {e}")
-                    overall_success = False
-            return overall_success
+                logger.error(f"Error downloading {key} to {output_path}: {e}")
+                overall_success = False
+        return overall_success
 
 class Create:
 
@@ -85,20 +77,26 @@ class Create:
                                 aws_access_key_id=MINIO_ACCESS_KEY,
                                 aws_secret_access_key=MINIO_SECRET_KEY)
 
-    def upload_object(self, file_path: str, key: str) -> bool:
+    def upload_object(self, input_path: str, output_path: str) -> bool:
+        """_summary_
+
+        Args:
+            input_path (str): path to local directory where the data will be uploaded
+            output_path (str): path to minio folder in the bucket
+
+        Returns:
+            bool: whether the upload was successfull (True/False)
         """
-        Upload a single file to the bucket at the given key.
-        """
-        # If file_path is a directory, iterate through its files recursively.
-        if os.path.isdir(file_path):
+        # If input_path is a directory, iterate through its files recursively.
+        if os.path.isdir(input_path):
             all_success = True
-            for root_dir, dirs, files in os.walk(file_path):
+            for root_dir, dirs, files in os.walk(input_path):
                 for file in files:
                     full_file_path = os.path.join(root_dir, file)
-                    # Obtain the relative path of the file with respect to file_path
-                    rel_path = os.path.relpath(full_file_path, start=file_path)
+                    # Obtain the relative path of the file with respect to input_path
+                    rel_path = os.path.relpath(full_file_path, start=input_path)
                     # Construct the destination key using the provided key as the base
-                    dest_key = os.path.join(key, rel_path).replace("\\", "/")
+                    dest_key = os.path.join(output_path, rel_path).replace("\\", "/")
                     try:
                         self.client.upload_file(Filename=full_file_path, Bucket=BUCKET_NAME, Key=dest_key)
                         logger.info(f"Uploaded {full_file_path} to bucket {BUCKET_NAME} as {dest_key}")
@@ -108,17 +106,17 @@ class Create:
             return all_success
 
         # If file_path is a file, upload it directly.
-        elif os.path.isfile(file_path):
+        elif os.path.isfile(input_path):
             try:
-                self.client.upload_file(Filename=file_path, Bucket=BUCKET_NAME, Key=key)
-                logger.info(f"Uploaded {file_path} to bucket {BUCKET_NAME} as {key}")
+                self.client.upload_file(Filename=input_path, Bucket=BUCKET_NAME, Key=output_path)
+                logger.info(f"Uploaded {input_path} to bucket {BUCKET_NAME} as {output_path}")
                 return True
             except ClientError as e:
-                print(f"Error uploading {file_path} to bucket {BUCKET_NAME}: {e}")
+                print(f"Error uploading {input_path} to bucket {BUCKET_NAME}: {e}")
                 return False
 
         else:
-            print(f"Provided path {file_path} is neither a file nor a directory.")
+            print(f"Provided path {input_path} is neither a file nor a directory.")
             return False
 
 class Delete:
@@ -142,5 +140,8 @@ class Delete:
             return False
 
 if __name__ == "__main__":
+    input_path = "DAWN/Fog"
+    output_path = "/Users/krishnaiyer/generative-ai-agentic-cv-base/data/raw"
+
     read = Read()
-    read.download_object("DAWN/Fog")
+    read.download_object(input_path, output_path)

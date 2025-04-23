@@ -14,6 +14,7 @@ from .env import (
     # Other configurations
 )
 from .tools import IQA_API_KEY,MINIO_ENDPOINT_URL,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,BUCKET_NAME,ABS_PATH_TO_PYTHON_ENV,ANNOTATION_MODEL,ANNOTATION_API_KEY,USE_MCP
+from .data import PATHS
 
 # Team configuration
 TEAM_MEMBERS = ["data_collector", "data_quality", "data_preprocessor","data_annotator"]
@@ -40,5 +41,7 @@ __all__ = [
     "BUCKET_NAME",
     "ABS_PATH_TO_PYTHON_ENV",
     "ANNOTATION_MODEL",
-    "ANNOTATION_API_KEY"
+    "ANNOTATION_API_KEY",
+    "USE_MCP",
+    "PATHS"
 ]
