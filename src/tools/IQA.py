@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 from typing import Tuple, Dict
 
@@ -61,7 +62,7 @@ def no_reference_iqa(prefix:str) -> Tuple[Dict,Dict]:
     nr_iqa_scores, mean_nr_iqa_scores = nr_iqa(input_path, artefacts_path)
     vlm_nr_iqa_scores, agg_vlm_nr_iqa_scores = vlm_nr_iqa(input_path,artefacts_path,nr_iqa_scores)
 
-    return mean_nr_iqa_scores,agg_vlm_nr_iqa_scores
+    return json.dumps(mean_nr_iqa_scores),json.dumps(agg_vlm_nr_iqa_scores)
 
 
 @tool()

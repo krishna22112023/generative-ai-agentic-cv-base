@@ -20,7 +20,7 @@ def create_openai_llm(
     model: str,
     base_url: Optional[str] = None,
     api_key: Optional[str] = None,
-    temperature: float = 0.0,
+    temperature: float = 0.1,
     **kwargs,
 ) -> ChatOpenAI:
     """
@@ -42,7 +42,7 @@ def create_deepseek_llm(
     model: str,
     base_url: Optional[str] = None,
     api_key: Optional[str] = None,
-    temperature: float = 0.0,
+    temperature: float = 0.1,
     **kwargs,
 ) -> ChatDeepSeek:
     """

@@ -35,7 +35,6 @@ class IQAResponse(BaseModel):
 def get_perception_model():
 
     llm = get_llm_by_type("vision")
-
     # Inject the output parser’s instructions into your system prompt.
     fp_prompt = f"{root}/src/prompts/vlm_nr_iqa.md"
     with open(fp_prompt, 'r', encoding='utf-8') as f:
@@ -45,9 +44,7 @@ def get_perception_model():
     # system_template = hub.pull(agent_config.LANGSMITH_PROMPT_TEMPLATE_NAME)
 
     messages = MessagesPlaceholder(variable_name='messages')
-    metrics = MessagesPlaceholder(variable_name="metrics")
-
-    prompt = ChatPromptTemplate.from_messages([system_template, metrics, messages])
+    prompt = ChatPromptTemplate.from_messages([system_template, messages])
     chain = prompt | llm.with_structured_output(schema=IQAResponse)
 
     return chain
@@ -66,10 +63,8 @@ def vlm_nr_iqa(input_path:str,artefacts_path:str,nr_iqa_scores:dict=None, extens
     if extensions is None:
         extensions = ['.jpg', '.jpeg', '.png']
 
-    chain = get_perception_model()
-
     results = {}
-    for fname in os.listdir(input_path):
+    for fname in tqdm(os.listdir(input_path), desc="Detecting degredation types in the dataset"):
         ext = os.path.splitext(fname)[1].lower()
         if ext not in extensions:
             continue
@@ -78,7 +73,8 @@ def vlm_nr_iqa(input_path:str,artefacts_path:str,nr_iqa_scores:dict=None, extens
         image_data = resize_image(img_path)
         encoded_data = base64.b64encode(image_data).decode('utf-8')
         message = [{"role": "user", "content": f"data:image/jpeg;base64,{encoded_data}"}]
-        response = chain.invoke({"messages": message, "metrics": nr_iqa_scores})
+        chain = get_perception_model()
+        response = chain.invoke({"messages": message, "metrics": nr_iqa_scores.get(fname, {})})
         try:
             parsed = response.model_dump()["items"]
             # Filter out degradations with severity "high" or "very high"
@@ -88,7 +84,7 @@ def vlm_nr_iqa(input_path:str,artefacts_path:str,nr_iqa_scores:dict=None, extens
             results[fname] = {"error": "JSON decode error", "detail": str(e)}
         
     # Save raw results to iqa_results.json
-    with open(os.path.join(artefacts_path, "openai_iqa_results.json"), 'w', encoding='utf-8') as outfile:
+    with open(os.path.join(artefacts_path, "degredation_iqa_results.json"), 'w', encoding='utf-8') as outfile:
         json.dump(results, outfile, indent=4)
     
     # Columns are degradation types; rows are severity levels.
@@ -103,10 +99,10 @@ def vlm_nr_iqa(input_path:str,artefacts_path:str,nr_iqa_scores:dict=None, extens
                 deg = item.get("degradation")
                 if sev in severities and deg in degradations:
                     aggregated[sev][deg] += 1
-    with open(os.path.join(artefacts_path, "openai_iqa_results_aggregated.json"), 'w', encoding='utf-8') as outfile:
+    with open(os.path.join(artefacts_path, "degredation_iqa_results_aggregated.json"), 'w', encoding='utf-8') as outfile:
         json.dump(aggregated, outfile, indent=4)
 
-    return json.dumps(aggregated, indent=4)
+    return results, aggregated
 
 def nr_iqa(
     input_path: str,
@@ -400,3 +396,21 @@ def get_metadata(input_path, output_path):
 
     return stats
 
+
+if __name__ == "__main__":
+    input_path = "/Users/krishnaiyer/generative-ai-agentic-cv-base/data/raw/DAWN/Fog"
+    artefacts_path = "/Users/krishnaiyer/generative-ai-agentic-cv-base/data/artefacts/DAWN/Fog"
+
+    nr_iqa_scores, mean_nr_iqa_scores = nr_iqa(input_path, artefacts_path)
+    print("NR IQA SCORES")
+    print(nr_iqa_scores)
+    results,aggregated = vlm_nr_iqa(input_path, artefacts_path, nr_iqa_scores)
+
+    print("Mean NR IQA SCORES")
+    print(mean_nr_iqa_scores)
+
+    print("VLM IQA RESULTS")
+    print(results)
+
+    print("AGGREGATED VLM IQA RESULTS")
+    print(aggregated)
