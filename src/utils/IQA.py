@@ -18,7 +18,7 @@ from langchain_core.prompts import (
     ChatPromptTemplate,
     MessagesPlaceholder, SystemMessagePromptTemplate
 )
-from src.agents.llm import get_llm_by_type
+
 from src.utils.preprocess import resize_image
 root = pyprojroot.find_root(pyprojroot.has_dir("src"))
 
@@ -33,7 +33,7 @@ class IQAResponse(BaseModel):
     items: List[Degradation]
 
 def get_perception_model():
-
+    from src.agents.llm import get_llm_by_type
     llm = get_llm_by_type("vision")
     # Inject the output parser’s instructions into your system prompt.
     fp_prompt = f"{root}/src/prompts/vlm_nr_iqa.md"
@@ -106,7 +106,6 @@ def vlm_nr_iqa(input_path:str,artefacts_path:str,nr_iqa_scores:dict=None, extens
 
 def nr_iqa(
     input_path: str,
-    artefacts_path: str,
     extensions: List[str] = None,
     metrics: List[str] = ['brisque','qalign']
 ) -> Tuple[Dict[str, Dict[str, float]], Dict[str, float]]:
@@ -127,9 +126,6 @@ def nr_iqa(
     Raises:
         ValueError: If no valid images are processed or if any requested metric is unsupported.
     """
-    # collect metadata
-    stats = get_metadata(input_path,artefacts_path)
-    logger.info("dataset metadata collected")
 
     # Supported metrics
     supported_metrics = ['brisque','qalign']
@@ -197,8 +193,6 @@ def nr_iqa(
         total = sum(img_scores[metric] for img_scores in scores.values())
         mean_scores[metric] = total / num_images
 
-    with open(os.path.join(artefacts_path, "nr_iqa_results.json"), 'w', encoding='utf-8') as outfile:
-        json.dump(scores, outfile, indent=4)
     return scores, mean_scores
 
 
@@ -300,7 +294,7 @@ def fr_iqa(
         json.dump(scores, outfile, indent=4)
     return scores, mean_scores
 
-def get_metadata(input_path, output_path):
+def get_metadata(input_path):
     """
     Scan a directory of images and return statistics in a dictionary:
       - number_of_images
@@ -389,10 +383,6 @@ def get_metadata(input_path, output_path):
         'average_image_size': {'width': avg_w, 'height': avg_h},
         'median_aspect_ratio': median_ar
     }
-
-    if output_path:
-        with open(output_path+'/metadata.json', 'w') as f:
-            json.dump(stats, f, indent=2)
 
     return stats
 

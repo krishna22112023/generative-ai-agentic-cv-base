@@ -13,7 +13,7 @@ MINIO_SECRET_KEY= os.getenv("MINIO_SECRET_KEY")
 MINIO_ENDPOINT_URL= os.getenv("MINIO_ENDPOINT_URL")
 BUCKET_NAME=os.getenv("BUCKET_NAME")
 
-# IQA configuration
+# Preprocessor configuration
 ABS_PATH_TO_PYTHON_ENV = "/Users/krishnaiyer/miniforge3/envs/restormer/bin/python"
 
 # Annotation configuration
@@ -31,3 +31,13 @@ MCP_TOOL_MAP: dict[str, list] = {
 }
 
 USE_MCP = False
+
+PREPROCESSOR_MODEL_MAP: dict[str, dict] = {
+    "restormer":
+        {
+        "noise": "Real_Denoising",
+        "motion blur": "Single_Image_Defocus_Deblurring",
+        "defocus blur": "Motion_Deblurring",
+        "rain": "Deraining",
+        }   
+    }

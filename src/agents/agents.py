@@ -6,6 +6,7 @@ from src.tools import (
     download_objects,
     upload_objects,
     no_reference_iqa,
+    verify_no_reference_iqa,
     create_ir_pipeline,
     run_ir_pipeline,
     gemini_annotator,
@@ -32,7 +33,7 @@ data_quality_agent = create_react_agent(
 
 data_preprocessor_agent = create_react_agent(
     get_llm_by_type(AGENT_LLM_MAP["data_preprocessor"]),
-    tools=[create_ir_pipeline,run_ir_pipeline],
+    tools=[create_ir_pipeline,run_ir_pipeline,verify_no_reference_iqa],
     prompt=lambda state: apply_prompt_template("data_preprocessor", state),
 )
 

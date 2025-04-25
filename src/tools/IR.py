@@ -11,7 +11,7 @@ import pyprojroot
 from typing import List,Optional, Dict
 
 from .decorators import log_io
-from src.config import ABS_PATH_TO_PYTHON_ENV
+from src.config import ABS_PATH_TO_PYTHON_ENV,PATHS,PREPROCESSOR_MODEL_MAP
 
 root = pyprojroot.find_root(pyprojroot.has_dir("src"))
 sys.path.append(str(root))
@@ -20,43 +20,53 @@ logger = logging.getLogger(__name__)
 
 @tool()
 @log_io
-def create_ir_pipeline(prefix:str) -> str:
-    """
-    This function generates a plan for the image preprocessing and restoration pipeline based on the IQA results
-    to be called based on the severity of the degredations detected in the image quality assessment (IQA) results.
-    This function will return a dictionary where the keys are the image name and the values are lists of tools required to be run.
+def create_ir_pipeline(prefix:str,pipeline:Optional[str]) -> str:
+    """_summary_
+
+    Args:
+        prefix (str): prefix name in minio bucket
+        pipeline (Optional[str]): Optional custom pipeline from user to be applied to all images 
+
+    Returns:
+        str: summary of the pipeline to be executed
     """
     logger.info("Generating pipeline for image restoration tasks.")
-
-    mapping = {
-    "noise": "Real_Denoising",
-    "motion blur": "Single_Image_Defocus_Deblurring",
-    "defocus blur": "Motion_Deblurring",
-    "rain": "Deraining",
-    }
-
-    # Load the IQA results from the intermediates folder
-    iqa_results_path = os.path.join(root, "data", "intermediate_results", prefix, "iqa_results.json")
-
-    with open(iqa_results_path, 'r') as f:
-        iqa_results = json.load(f)
-
-    # Determine which restoration tools to run based on the IQA results
-    pipeline = {}
-    for image, degradations in iqa_results.items():
-        filtered = [
-            mapping.get(degradation.get("degradation"), None)  # Use the "type" key to map to the tool
-            for degradation in degradations
-            if degradation.get("severity") in ("medium", "high", "very high")
-        ]
-        pipeline[image] = [tool for tool in filtered if tool is not None]  # Filter out None values
-    
+    artefacts_path = f"{PATHS['artefacts']}/{prefix}"
+    raw_path = f"{PATHS['raw']}/{prefix}"
+    iqa_results_path = os.path.join(artefacts_path, "degredation_iqa_results.json")
+    inferred_pipeline = {}
+    if not pipeline:
+        logger.info(f"No custom pipeline provided by user. Proceed to detect pipeline automatically.")
+        if not os.path.exists(iqa_results_path):
+            logger.error(f"Degredation IQA results file not found: {iqa_results_path}")
+            logger.info(f"Skipping pipeline generation")
+        else:
+            #mapping the degredations to name of restormer models
+            with open(iqa_results_path, 'r') as f:
+                iqa_results = json.load(f)
+            # Determine which restoration tools to run based on the IQA results
+            for fname, degradations in iqa_results.items():
+                filtered = [
+                    PREPROCESSOR_MODEL_MAP.get('restormer').get(degradation.get("degradation"), None)  
+                    for degradation in degradations
+                    if degradation.get("severity") in ("medium", "high", "very high")
+                ]
+                inferred_pipeline[fname] = [tool for tool in filtered if tool is not None]  
+    else:
+        logger.info(f"Custom pipeline provided by user: {pipeline}")
+        mapped_pipeline = [PREPROCESSOR_MODEL_MAP.get('restormer').get(tool) for tool in pipeline]
+        for fname in os.listdir(raw_path):
+            ext = os.path.splitext(fname)[1].lower()
+            if ext not in ['.jpg', '.jpeg', '.png']:
+                continue
+            inferred_pipeline[fname] = mapped_pipeline
     # Save the pipeline to a JSON file
-    intermediate_path = os.path.join(root, "data", "intermediate_results", prefix, "pipeline.json")
-    with open(intermediate_path, 'w', encoding='utf-8') as outfile:
-        json.dump(pipeline, outfile, indent=4)
+    output_pipeline_path = os.path.join(artefacts_path, "preprocessing_pipeline.json")
+    with open(output_pipeline_path, 'w', encoding='utf-8') as outfile:
+        json.dump(inferred_pipeline, outfile, indent=4)
+    logger.info(f"Pipeline generated and saved to {output_pipeline_path}")
 
-    return json.dumps(pipeline)
+    return json.dumps(inferred_pipeline)
 
 @tool()
 @log_io
@@ -67,12 +77,20 @@ def run_ir_pipeline(prefix:str) -> bool:
     """
     logger.info("Running pipeline for image restoration tasks.")
 
-    pipeline = os.path.join(root, "data", "intermediate_results", prefix, "pipeline.json")
-    input_dir = os.path.join(root)
-    output_dir = os.path.join(root, "data", "processed", prefix)
+    artefacts_path = f"{PATHS['artefacts']}/{prefix}"
+    pipeline_path = os.path.join(artefacts_path, "preprocessing_pipeline.json")
+    raw_path = f"{PATHS['raw']}/{prefix}"
+    processed_path = f"{PATHS['processed']}/{prefix}"
+    os.makedirs(processed_path, exist_ok=True)
     script_path = "src/utils/restormer.py"
-    cmd = f"conda run -n restormer {ABS_PATH_TO_PYTHON_ENV} {os.path.join(root, script_path)} --pipeline {pipeline} --input_dir {input_dir} --output_dir {output_dir}"
-    subprocess.run(cmd, shell=True, check=True, executable='/bin/bash')
 
-    return True
+    try:
+        cmd = f"conda run -n restormer {ABS_PATH_TO_PYTHON_ENV} {os.path.join(root, script_path)} --pipeline {pipeline_path} --input_dir {raw_path} --output_dir {processed_path}"
+        subprocess.run(cmd, shell=True, check=True, executable='/bin/bash')
+        return True
+    except Exception as e:
+        logger.error(f"Error running pipeline: {e}")
+        return False
+
+
     

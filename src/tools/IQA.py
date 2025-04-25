@@ -6,7 +6,7 @@ from typing import Tuple, Dict
 from langchain_core.tools import tool
 from .decorators import log_io
 
-from src.utils.IQA import nr_iqa,fr_iqa,vlm_nr_iqa
+from src.utils.IQA import nr_iqa,fr_iqa,vlm_nr_iqa,get_metadata
 from src.config import PATHS
 
 logger = logging.getLogger(__name__)
@@ -59,11 +59,72 @@ def no_reference_iqa(prefix:str) -> Tuple[Dict,Dict]:
     input_path = f"{PATHS['raw']}/{prefix}"
     artefacts_path = f"{PATHS['artefacts']}/{prefix}"
     os.makedirs(artefacts_path,exist_ok=True)
-    nr_iqa_scores, mean_nr_iqa_scores = nr_iqa(input_path, artefacts_path)
+
+    # collect metadata
+    stats = get_metadata(input_path)
+    logger.info("dataset metadata collected")
+    with open(os.path.join(artefacts_path,'metadata.json'), 'w') as f:
+        json.dump(stats, f, indent=4)
+
+    #compute nr iqa scores
+    nr_iqa_scores, mean_nr_iqa_scores = nr_iqa(input_path)
+    logger.info("no-reference iqa scores computed")
+    with open(os.path.join(artefacts_path, "nr_iqa_results_raw.json"), 'w') as f:
+        json.dump(nr_iqa_scores, f, indent=4)
+
+    #compute vlm nr iqa scores
     vlm_nr_iqa_scores, agg_vlm_nr_iqa_scores = vlm_nr_iqa(input_path,artefacts_path,nr_iqa_scores)
+    logger.info("vlm no-reference iqa scores computed")
+    with open(os.path.join(artefacts_path, "degredation_iqa_results.json"), 'w') as f:
+        json.dump(vlm_nr_iqa_scores, f, indent=4)
 
     return json.dumps(mean_nr_iqa_scores),json.dumps(agg_vlm_nr_iqa_scores)
 
+@tool()
+@log_io
+def verify_no_reference_iqa(prefix:str) -> list:
+    """
+    Compares no-reference image quality assessment (NR-IQA) of the processed images with the raw images
+    to verify if the preprocessing worked correctly.
+    
+    The function relies on the following folder structure under the given prefix:
+    - Raw images: PATHS['raw']/{prefix}
+    - Artefacts (logs, outputs): PATHS['artefacts']/{prefix}
+
+    Args:
+        prefix (str): prefix name in minio bucket
+
+    Returns:
+        List: List of images that failed the verification, i.e. images that had a negative difference in brisque or qalign
+    """
+    input_path = f"{PATHS['processed']}/{prefix}"
+    artefacts_path = f"{PATHS['artefacts']}/{prefix}"
+    os.makedirs(artefacts_path,exist_ok=True)
+
+    # collect previous nr iqa scores from raw data
+    with open(f"{artefacts_path}/nr_iqa_results_raw.json", "r") as f:
+        nr_iqa_scores_raw = json.load(f)
+
+    # compute processed nr iqa scores from processed data
+    nr_iqa_scores_processed, mean_nr_iqa_scores = nr_iqa(input_path, artefacts_path)
+    logger.info("no-reference iqa scores computed")
+    with open(os.path.join(artefacts_path, "nr_iqa_results_processed.json"), 'w') as f:
+        json.dump(nr_iqa_scores_processed, f, indent=4)
+
+    #compare nr iqa scores
+    nr_iqa_verification = {}
+    verification_failed_images = []
+    for fname, nr_iqa_scores in nr_iqa_scores_raw.items():
+        brisque_diff = nr_iqa_scores["brisque"] - nr_iqa_scores_processed.get(fname)["brisque"]
+        qalign_diff = nr_iqa_scores_processed.get(fname)["qalign"] - nr_iqa_scores["qalign"]
+        if brisque_diff <= 0 or qalign_diff <= 0:
+            verification_failed_images.append(fname)
+        nr_iqa_verification[fname] = {"brisque":brisque_diff,
+                                      "qalign":qalign_diff}
+    with open(os.path.join(artefacts_path, "nr_iqa_results_verification.json"), 'w') as f:
+        json.dump(nr_iqa_verification, f, indent=4)
+    
+    return verification_failed_images
 
 @tool()
 @log_io
@@ -101,3 +162,5 @@ def full_reference_iqa(prefix:str) -> Tuple[Dict,Dict]:
     scores, mean_scores = fr_iqa(input_path, artefacts_path, reference_path)
     return scores,mean_scores
 
+if __name__ == "__main__":
+    scores,mean_scores = no_reference_iqa("DAWN/Fog")
