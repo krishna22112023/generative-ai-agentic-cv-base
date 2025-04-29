@@ -30,12 +30,16 @@ dependencies = [
     "google-genai",
     "opencv-contrib-python",
     "torch",
+    "torchvision",
     "transformers==4.36.2",
     "accelerate",
     "sentencepiece",
     "icecream",
     "mcp",
-    "langchain-mcp-adapters"]
+    "langchain-mcp-adapters",
+    "scikit-learn",
+    "roboflow",
+    "autodistill-grounded-sam"]
 
 [project.optional-dependencies]
 dev = [
