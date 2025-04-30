@@ -2,7 +2,7 @@ import pyprojroot
 import logging
 import warnings
 warnings.filterwarnings("ignore")
-from typing import Dict
+from typing import List
 logger = logging.getLogger(__name__)
 
 from langchain_core.tools import tool
@@ -16,14 +16,14 @@ root = pyprojroot.find_root(pyprojroot.has_dir("src"))
 
 @tool
 @log_io
-def annotator(prefix:str, classes: Dict[str]) -> bool:
+def grounded_annotator(prefix:str, classes: List[str]) -> bool:
     """
     Annotates images in the specified directory with bounding boxes and class labels.
     prefix (str): The directory prefix where images are located.
     classes (List[str]): A list of class labels to use for annotation.
     """
     input_path = f"{PATHS['processed']}/{prefix}"
-
+    classes = {k:v for k,v in zip(classes,classes)}
     try:
         base_model = GroundedSAM(ontology=CaptionOntology(classes))
 

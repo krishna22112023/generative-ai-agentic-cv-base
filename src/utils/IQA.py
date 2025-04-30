@@ -4,6 +4,7 @@ import pyprojroot
 from pydantic import BaseModel, Field
 from typing import List, Tuple, Dict
 import os
+from pathlib import Path
 import base64
 from tqdm import tqdm
 import json
@@ -106,7 +107,6 @@ def vlm_nr_iqa(input_path:str,artefacts_path:str,nr_iqa_scores:dict=None, extens
 
 def nr_iqa(
     input_path: str,
-    extensions: List[str] = None,
     metrics: List[str] = ['brisque','qalign']
 ) -> Tuple[Dict[str, Dict[str, float]], Dict[str, float]]:
     """
@@ -135,26 +135,21 @@ def nr_iqa(
     for m in metrics:
         if m not in supported_metrics:
             raise ValueError(f"Unsupported metric '{m}'. Supported: {supported_metrics}")
-
-    # Default extensions
-    if extensions is None:
-        extensions = ['.jpg', '.jpeg', '.png']
-
     
-    brisque_model = cv2.quality.QualityBRISQUE_create("src/config/brisque_model_live.yml","src/config/brisque_range_live.yml")
+    files = (p.resolve() for p in Path(input_path).glob("**/*") if p.suffix in {'.jpg', '.jpeg', '.png'})
+    
     qalign_model = AutoModelForCausalLM.from_pretrained("q-future/one-align", trust_remote_code=True, attn_implementation="eager", 
                                         torch_dtype=torch.float16, device_map="auto")
+    brisque_model = cv2.quality.QualityBRISQUE_create("src/config/brisque_model_live.yml","src/config/brisque_range_live.yml")
 
     # Prepare output structures
     scores: Dict[str, Dict[str, float]] = {}
-
     # Iterate over images in input directory
-    for fname in tqdm(os.listdir(input_path),desc="No Reference Image Quality Assessment Running"):
-        ext = os.path.splitext(fname)[1].lower()
-        if ext not in extensions:
+    for img_path in tqdm(files, desc="Computing NR-IQA metrics"):
+        if img_path is None:
             continue
-
-        img_path = os.path.join(input_path, fname)
+        fname = os.path.basename(img_path)
+    
         brisque_img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
         qalign_img = Image.open(img_path)
         
@@ -190,7 +185,7 @@ def nr_iqa(
     mean_scores: Dict[str, float] = {}
     num_images = len(scores)
     for metric in metrics:
-        total = sum(img_scores[metric] for img_scores in scores.values())
+        total = sum(img_scores[metric] for img_scores in scores.values() if img_scores[metric] is not None)
         mean_scores[metric] = total / num_images
 
     return scores, mean_scores
@@ -388,19 +383,19 @@ def get_metadata(input_path):
 
 
 if __name__ == "__main__":
-    input_path = "/Users/krishnaiyer/generative-ai-agentic-cv-base/data/raw/DAWN/Fog"
-    artefacts_path = "/Users/krishnaiyer/generative-ai-agentic-cv-base/data/artefacts/DAWN/Fog"
 
-    nr_iqa_scores, mean_nr_iqa_scores = nr_iqa(input_path, artefacts_path)
+    input_path = "/Users/krishnaiyer/generative-ai-agentic-cv-base/data/raw/Test"
+
+    nr_iqa_scores, mean_nr_iqa_scores = nr_iqa(input_path)
     print("NR IQA SCORES")
     print(nr_iqa_scores)
-    results,aggregated = vlm_nr_iqa(input_path, artefacts_path, nr_iqa_scores)
+    #results,aggregated = vlm_nr_iqa(input_path, artefacts_path, nr_iqa_scores)
 
     print("Mean NR IQA SCORES")
     print(mean_nr_iqa_scores)
 
     print("VLM IQA RESULTS")
-    print(results)
+    #print(results)
 
     print("AGGREGATED VLM IQA RESULTS")
-    print(aggregated)
+    #print(aggregated)

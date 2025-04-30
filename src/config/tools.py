@@ -17,9 +17,7 @@ BUCKET_NAME=os.getenv("BUCKET_NAME")
 ABS_PATH_TO_PYTHON_ENV = "/Users/krishnaiyer/miniforge3/envs/restormer/bin/python"
 
 # Annotation configuration
-OBJ_DETECTION_MODEL = os.getenv("OBJ_DETECTION_MODEL", "gemini-2.5-pro-exp-03-25")
-SEGMENTATION_DETECTION_MODEL = os.getenv("SEGMENTATION_DETECTION_MODEL", "facebook/sam2-hiera-small")
-ANNOTATION_API_KEY = os.getenv("ANNOTATION_API_KEY")
+ANNOTATION_MODEL = os.getenv("ANNOTATION_MODEL", "grounded-sam")
 
 MCP_TOOL_MAP: dict[str, list] = {
     "coordinator": [],

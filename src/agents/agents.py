@@ -9,7 +9,7 @@ from src.tools import (
     verify_no_reference_iqa,
     create_ir_pipeline,
     run_ir_pipeline,
-    gemini_annotator,
+    grounded_annotator,
     list_dir_local,
     get_dir_metadata_local
 )
@@ -39,7 +39,7 @@ data_preprocessor_agent = create_react_agent(
 
 data_annotator_agent = create_react_agent(
     get_llm_by_type(AGENT_LLM_MAP["data_annotator"]),
-    tools=[gemini_annotator],
+    tools=[grounded_annotator],
     prompt=lambda state: apply_prompt_template("data_annotator", state),
 )
 
