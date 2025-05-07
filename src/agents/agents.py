@@ -11,7 +11,8 @@ from src.tools import (
     run_ir_pipeline,
     grounded_annotator,
     list_dir_local,
-    get_dir_metadata_local
+    get_dir_metadata_local,
+    tavily_tool
 )
 
 from .llm import get_llm_by_type
@@ -21,7 +22,7 @@ from src.config.agents import AGENT_LLM_MAP
 
 data_collector_agent = create_react_agent(
     get_llm_by_type(AGENT_LLM_MAP["data_collector"]),
-    tools=[list_objects,download_objects,upload_objects,list_dir_local,get_dir_metadata_local],
+    tools=[list_objects,download_objects,upload_objects,list_dir_local,get_dir_metadata_local,tavily_tool],
     prompt=lambda state: apply_prompt_template("data_collector", state),
 )
 

@@ -25,3 +25,6 @@ class State(MessagesState):
     full_plan: str
     deep_thinking_mode: bool
     search_before_planning: bool
+
+    # human in the loop interaction
+    human_in_the_loop: str
