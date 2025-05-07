@@ -40,3 +40,5 @@ PREPROCESSOR_MODEL_MAP: dict[str, dict] = {
         "rain": "Deraining",
         }   
     }
+
+TAVILY_MAX_RESULTS = 5

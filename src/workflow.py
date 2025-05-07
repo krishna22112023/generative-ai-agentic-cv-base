@@ -45,7 +45,7 @@ def run_agent_workflow(user_input: str, debug: bool = False):
                 # Runtime Variables
                 "messages": [{"role": "user", "content": user_input}],
                 "deep_thinking_mode": False,
-                "search_before_planning": False,
+                "search_before_planning": True,
             }
         )
     else:
@@ -56,7 +56,7 @@ def run_agent_workflow(user_input: str, debug: bool = False):
                 # Runtime Variables
                 "messages": [{"role": "user", "content": user_input}],
                 "deep_thinking_mode": False,
-                "search_before_planning": False,
+                "search_before_planning": True,
             }
         )
     logger.debug(f"Final workflow state: {result}")
