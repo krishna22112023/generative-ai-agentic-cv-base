@@ -99,11 +99,8 @@ class ChatRequest(BaseModel):
     search_before_planning: Optional[bool] = Field(
         False, description="Whether to search before planning"
     )
-
-
-class ResumeRequest(BaseModel):
-    workflow_id: str = Field(..., description="ID of the workflow to resume")
-    user_input: str = Field(..., description="User input to continue the workflow")
+   #workflow_id: str = Field(..., description="ID of the workflow to resume")
+   #user_input: str = Field(..., description="User input to continue the workflow")
 
 
 @app.post("/api/chat/stream")
@@ -156,7 +153,7 @@ async def chat_endpoint(request: ChatRequest, req: Request):
                         break
                     
                     # Handle human input required event
-                    if event["event"] == "human_input_required":
+                    '''if event["event"] == "human_input_required":
                         logger.info(f"human input requirement sent to api")
                         # Store the workflow state
                         workflow_states[event["data"]["workflow_id"]] = {
@@ -164,7 +161,7 @@ async def chat_endpoint(request: ChatRequest, req: Request):
                             "checkpoint_ns": event["data"]["checkpoint_ns"],
                             "state": event["data"]["state"],
                             "timestamp": asyncio.get_event_loop().time()
-                        }
+                        }'''
                     
                     # Always yield the event
                     yield {
@@ -182,67 +179,4 @@ async def chat_endpoint(request: ChatRequest, req: Request):
         )
     except Exception as e:
         logger.error(f"Error in chat endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/api/chat/resume")
-async def resume_workflow(request: ResumeRequest, req: Request):
-    """
-    Resume a workflow that was interrupted for human input.
-
-    Args:
-        request: The resume request with workflow_id and user_input
-        req: The FastAPI request object for connection state checking
-
-    Returns:
-        The next event/result as a JSON response
-    """
-    logger.info(f"Resuming workflow with ID: {request.workflow_id}")
-    try:
-        messages = []
-        workflow_id = request.workflow_id
-        if workflow_id not in workflow_states:
-            raise HTTPException(
-                status_code=404, 
-                detail=f"Workflow {workflow_id} not found or expired"
-            )
-        
-        # Get the stored state
-        resume_state = workflow_states[workflow_id]
-        logger.info(f"Resuming state: {resume_state}")
-        logger.info(f"User input: {request.user_input}")
-        
-        # Remove the state from storage to prevent reuse
-        del workflow_states[workflow_id]
-
-        # Run the workflow and return the first event (non-streaming)
-        event = None
-        async for e in run_agent_workflow(
-            user_input_messages=messages,
-            resume_state=resume_state,
-            resume_user_input=request.user_input
-        ):
-            event = e
-            break
-
-        if event is None:
-            raise HTTPException(status_code=500, detail="No event returned from workflow")
-
-        # If another human input is required, store the state again
-        if event["event"] == "human_input_required":
-            workflow_states[event["data"]["workflow_id"]] = {
-                "workflow_id": event["data"]["workflow_id"],
-                "checkpoint_ns": event["data"]["checkpoint_ns"],
-                "state": event["data"]["state"],
-                "timestamp": asyncio.get_event_loop().time()
-            }
-        logger.info(f"Event: {event['event']}, Data: {event['data']}")
-        return {
-            "event": event["event"],
-            "data": event["data"],
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error in resume endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))

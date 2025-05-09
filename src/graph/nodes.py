@@ -223,7 +223,7 @@ def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
     return Command(goto=goto, update={"next": goto})
 
 
-def planner_node(state: State) -> Command[Literal["human_interaction", "__end__"]]:
+def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]]:
     """Planner node that generate the full plan."""
     logger.info("Planner generating full plan")
     messages = apply_prompt_template("planner", state)
@@ -244,7 +244,7 @@ def planner_node(state: State) -> Command[Literal["human_interaction", "__end__"
     if full_response.endswith("```"):
         full_response = full_response.removesuffix("```")
 
-    goto = "human_interaction"
+    goto = "supervisor"
     try:
         json.loads(full_response)
     except json.JSONDecodeError:
@@ -279,7 +279,7 @@ def reporter_node(state: State) -> Command[Literal["supervisor"]]:
         goto="supervisor",
     )
 
-def human_interaction_node(state: State) -> Command[Literal["planner", "supervisor"]]:
+'''def human_interaction_node(state: State) -> Command[Literal["planner", "supervisor"]]:
     """Human in the loop node that ask for human feedback."""
     logger.info("Human in the loop active")
     prompt = apply_prompt_template("human_interaction", state)
@@ -325,3 +325,4 @@ def human_interaction_node(state: State) -> Command[Literal["planner", "supervis
         update=update_dict,
         goto=next_node
     )
+'''
