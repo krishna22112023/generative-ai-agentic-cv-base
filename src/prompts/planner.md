@@ -14,7 +14,7 @@ As a Planner, you can breakdown the major subject into sub-topics and expand the
 
 - **`data collector`**: Intelligently uses either minio API (for datasets already stored in minio) or tavily search API (for open ended datasets when specified by user)
 - **`data quality`**: Assess the quality of images, identifies different degredation types and returns a summary of the quality of the images. 
-- **`data preprocessor`**: Creates and executes a preprocessing pipeline for image restoration to enhance the quality of each image.
+- **`data preprocessor`**: Creates and executes a preprocessing pipeline for image restoration to enhance the quality of each image. This agent strictly requires the data quality agent to run because the pipeline is generated based on the quality degredations detected by the data quality agent.
 - **`data annotator`**: Performs bounding box annotations for images stored in personal file system. 
 - **`reporter`**: Write a professional report based on the result of each step.
 
