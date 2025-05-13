@@ -1,0 +1,3 @@
+[submodule "ext/AgenticIR"]
+	path = ext/AgenticIR
+	url = https://github.com/krishna22112023/AgenticIR.git
