@@ -33,20 +33,18 @@ USE_MCP = False
 
 PREPROCESSOR_MODEL_MAP: dict[str, dict[str, list[str]]] = {
     "restormer": {
-        "color noise": ["Real_Denoising","Gaussian_Color_Denoising"],
-        "gray noise": ["Gaussian_Gray_Denoising"],
+        "noise": ["Real_Denoising","Gaussian_Color_Denoising"],
         "motion blur": ["Single_Image_Defocus_Deblurring"],
         "defocus blur": ["Motion_Deblurring"],
         "rain": ["Deraining"],
     },
     "swinir": {
-        "color noise": ["color_dn"],
-        "gray noise": ["gray_dn"],
-        "jpeg compression": ["jpeg_car"],
+        "noise": ["color_dn_15", "color_dn_25", "color_dn_50"],
+        "jpeg compression": ["color_jpeg_car_10", "color_jpeg_car_20", "color_jpeg_car_30", "color_jpeg_car_40"],
         "poor resolution": ["real_sr"]
     },
     "xrestormer": {
-        "color noise": ["denoising"],
+        "noise": ["denoising"],
         "haze": ["dehazing"],
         "rain": ["deraining"],
         "poor resolution": ["super_resolution"],
@@ -56,13 +54,13 @@ PREPROCESSOR_MODEL_MAP: dict[str, dict[str, list[str]]] = {
 
 MODEL_SCRIPT_CONFIG = {
     "restormer": {"env": "restormer", 
-                  "python": "python3.7", 
+                  "python": "python3.8", 
                   "script": "Restormer/demo.py"},
     "swinir": {"env": "swinir", 
                "python": "python3.8", 
                "script": "SwinIR/inference.py"},
     "xrestormer": {"env": "xrestormer", 
-                   "python": "python3.9", 
+                   "python": "python3.8", 
                    "script": "X-Restormer/inference.py"},
 }
 

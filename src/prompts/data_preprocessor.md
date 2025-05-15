@@ -23,11 +23,14 @@ For example :
 ```markdown
    ## Restoration Pipeline Plan
 
-   | Image Name      | Restoration Tools                        |
-   |-----------------|------------------------------------------|
-   | image_001.jpg   | Real_Denoising, Single_Image_Defocus_Deblurring |
-   | image_002.jpg   | Deraining                                |
-   | image_003.jpg   | Real_Denoising, Deraining                |
+   | Image Name      | Model       | Pipeline
+   |-----------------|------------ | ------------
+   | image_001.jpg   | Restormer   | Real_Denoising, Gaussian_Color_Denoising
+   | image_002.jpg   | SwinIR      | color_dn
+   | image_003.jpg   | X-Restormer | denoising
+   | image_004.jpg   | SwinIR      | jpeg_car
+   | image_005.jpg   | X-Restormer | deraining
+   ... Showing only top 5 images
 ```
 
 ### Step 3: Execute the preprocessing pipeline 

@@ -1,7 +1,7 @@
 name: 003_xrestormer_deblur
 model_type: XRestormerModel
 scale: 1
-num_gpu: 8
+num_gpu: 0
 manual_seed: 123
 padding_size: 64
 
@@ -10,7 +10,7 @@ datasets:
     test_1:
       name: test
       type: SingleImageDataset
-      dataroot_lq: ~
+      dataroot_lq: data/raw/Test
       sigma_test: 50
       in_ch: 3  ## RGB image
       io_backend:
@@ -37,10 +37,10 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: X-Restormer/experiments/pretrained/deblur_300k.pth
+  pretrain_network_g: modules/X-Restormer/experiments/Deblurring/deblur_300k.pth
   strict_load_g: true
   resume_state: ~
-  results: ~
+  results: data/processed/
 # validation settings
 val:
   save_img: true

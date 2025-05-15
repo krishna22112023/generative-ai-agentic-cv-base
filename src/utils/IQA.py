@@ -106,7 +106,9 @@ def vlm_nr_iqa(input_path:str,artefacts_path:str,nr_iqa_scores:dict=None, extens
     return results, aggregated
 
 def nr_iqa(
-    input_path: str,
+    input_dir: str,
+    qalign_model: str,
+    brisque_model: str,
     metrics: List[str] = ['brisque','qalign']
 ) -> Tuple[Dict[str, Dict[str, float]], Dict[str, float]]:
     """
@@ -127,66 +129,35 @@ def nr_iqa(
         ValueError: If no valid images are processed or if any requested metric is unsupported.
     """
 
-    # Supported metrics
-    supported_metrics = ['brisque','qalign']
+    scores = {}
+    for img_path in Path(input_dir).glob("*.jpg"):
+        fname = img_path.name
+        # BRISQUE
+        gray = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
+        try:
+            b = brisque_model.compute(gray)
+            brisque_score = float(b[0] if isinstance(b, (list,tuple)) else b)
+        except Exception as e:
+            logger.warning(f"BRISQUE failed for {fname}: {e}")
+            brisque_score = None
+        # QALIGN
+        try:
+            img = Image.open(img_path)
+            out = qalign_model.score([img], task_="quality", input_="image")
+            qalign_score = float(out.detach().cpu().numpy()[0])
+        except Exception as e:
+            logger.warning(f"QALIGN failed for {fname}: {e}")
+            qalign_score = None
 
-    # Normalize and validate requested metrics
-    metrics = [m.lower() for m in metrics]
+        scores[fname] = {'brisque': brisque_score,
+                         'qalign':  qalign_score}
+
+    # compute means
+    mean_scores = {}
+    n = len(scores)
     for m in metrics:
-        if m not in supported_metrics:
-            raise ValueError(f"Unsupported metric '{m}'. Supported: {supported_metrics}")
-    
-    files = (p.resolve() for p in Path(input_path).glob("**/*") if p.suffix in {'.jpg', '.jpeg', '.png'})
-    
-    qalign_model = AutoModelForCausalLM.from_pretrained("q-future/one-align", trust_remote_code=True, attn_implementation="eager", 
-                                        torch_dtype=torch.float16, device_map="auto")
-    brisque_model = cv2.quality.QualityBRISQUE_create("src/config/brisque_model_live.yml","src/config/brisque_range_live.yml")
-
-    # Prepare output structures
-    scores: Dict[str, Dict[str, float]] = {}
-    # Iterate over images in input directory
-    for img_path in tqdm(files, desc="Computing NR-IQA metrics"):
-        if img_path is None:
-            continue
-        fname = os.path.basename(img_path)
-    
-        brisque_img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-        qalign_img = Image.open(img_path)
-        
-        # Initialize nested dict for this file
-        scores[fname] = {}
-
-        # Compute each requested metric
-        for metric in metrics:
-            if metric == 'brisque':
-                try:
-                    out = brisque_model.compute(brisque_img)
-                    score_value = float(out[0]) if isinstance(out, (tuple, list)) else float(out)
-                except Exception as e:
-                    logger.info(f"An error occured inferencing BRISQUE. Skipping image. {e}")
-                    score_value = None
-            elif metric == 'qalign':
-                try:
-                    out = qalign_model.score([qalign_img], task_="quality", input_="image")
-                    score_value = float(out.detach().cpu().numpy()[0])
-                except Exception as e:
-                    logger.info(f"An error occured inferencing Q-Align. Skipping image. {e}")
-                    score_value = None
-            else:
-                score_value = None
-            # Handle different return types
-            scores[fname][metric] = score_value
-
-    # Ensure we processed at least one image
-    if not scores:  
-        raise ValueError(f"No valid images processed in '{input_path}'.")
-
-    # Compute mean scores per metric
-    mean_scores: Dict[str, float] = {}
-    num_images = len(scores)
-    for metric in metrics:
-        total = sum(img_scores[metric] for img_scores in scores.values() if img_scores[metric] is not None)
-        mean_scores[metric] = total / num_images
+        total = sum(s[m] for s in scores.values() if s[m] is not None)
+        mean_scores[m] = total / n if n else None
 
     return scores, mean_scores
 

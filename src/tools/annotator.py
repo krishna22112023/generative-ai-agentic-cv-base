@@ -22,7 +22,7 @@ def grounded_annotator(prefix:str, classes: List[str]) -> bool:
     prefix (str): The directory prefix where images are located.
     classes (List[str]): A list of class labels to use for annotation.
     """
-    input_path = f"{PATHS['processed']}/{prefix}"
+    input_path = f"{PATHS['processed_final']}/{prefix}"
     classes = {k:v for k,v in zip(classes,classes)}
     try:
         base_model = GroundedSAM(ontology=CaptionOntology(classes))
