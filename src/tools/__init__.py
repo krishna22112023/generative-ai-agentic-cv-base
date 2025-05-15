@@ -4,6 +4,7 @@ from .IR import create_ir_pipeline,run_ir_pipeline
 from .annotator import grounded_annotator
 from .file_system import list_dir_local,get_dir_metadata_local
 from .search import tavily_tool 
+from .browser import browser_tool
 
 __all__ = [
     "list_objects",
@@ -16,5 +17,6 @@ __all__ = [
     "list_dir_local",
     "get_dir_metadata_local",
     "grounded_annotator",
-    "tavily_tool"
+    "tavily_tool",
+    "browser_tool",
 ]
