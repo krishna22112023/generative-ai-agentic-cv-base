@@ -61,6 +61,7 @@ def no_reference_iqa(prefix:str) -> Tuple[Dict,Dict]:
     Returns:
         Tuple: Returns a dictionary of all metrics for each each image and the average score across all images in the input folder.
     """
+    logger.info(f"Using prefix {prefix}")
     input_path = f"{PATHS['raw']}/{prefix}"
     artefacts_path = f"{PATHS['artefacts']}/{prefix}"
     os.makedirs(artefacts_path,exist_ok=True)

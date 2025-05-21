@@ -254,11 +254,13 @@ def run_ir_pipeline(prefix: str) -> bool:
             img = futures[fut]
             try:
                 fut.result()
+                logger.info("All images processed.")
+                return True
             except Exception as e:
                 logger.error(f"Unhandled error on {img}: {e}")
+                return False
 
-    logger.info("All images processed.")
-    return True
+    
 
 if __name__ == "__main__":
     prefix = "Test"

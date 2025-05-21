@@ -7,7 +7,6 @@ from langchain.tools import BaseTool
 from browser_use import AgentHistoryList, Browser, BrowserConfig
 from browser_use.browser.context import BrowserContextConfig
 from browser_use import Agent as BrowserAgent
-from src.agents.llm import vl_llm
 from src.tools.decorators import create_logged_tool
 
 root = pyprojroot.find_root(pyprojroot.has_dir("src"))
@@ -16,7 +15,7 @@ from datetime import datetime
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 expected_browser = Browser(
     config=BrowserConfig(
-        new_context_config=BrowserContextConfig(save_downloads_path=os.path.join(root, "data/raw",f"downloads_{timestamp}")),
+        new_context_config=BrowserContextConfig(save_downloads_path=os.path.join(root, "data/downloads",f"ext_{timestamp}")),
     )
 )
 
@@ -37,6 +36,7 @@ class BrowserTool(BaseTool):
 
     def _run(self, instruction: str) -> str:
         """Run the browser task synchronously."""
+        from src.agents.llm import vl_llm  # Import inside method to avoid circular dependency
         self._agent = BrowserAgent(
             task=instruction,  # Will be set per request
             llm=vl_llm,
@@ -59,6 +59,7 @@ class BrowserTool(BaseTool):
 
     async def _arun(self, instruction: str) -> str:
         """Run the browser task asynchronously."""
+        from src.agents.llm import vl_llm  # Import inside method to avoid circular dependency
         self._agent = BrowserAgent(
             task=instruction, llm=vl_llm  # Will be set per request
         )

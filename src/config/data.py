@@ -8,5 +8,6 @@ PATHS = {
     "artefacts": f"{root}/data/artefacts",
     "processed": f"{root}/data/processed",
     "annotated": f"{root}/data/annotated",
+    "downloads": f"{root}/data/downloads",
     "processed_final": f"{root}/data/processed_final",
 }
