@@ -1,4 +1,4 @@
-# Langgraph multi-agent systems for agentic computer vision 
+# Agentic MLOPs for computer vision model using langgraph
 
 - The system could consist of multiple multi-agent systems each focused on a separate part of a typical CV MLOps pipeline
 - Sub-systems include but not limited to : 
@@ -9,7 +9,7 @@
 
 ![](assets/overview.png)
 
-### Overview 
+### Agentic Data preprocessing  
 
 The following are key components of the system: 
 
@@ -19,9 +19,9 @@ The following are key components of the system:
 4. Agents : Depending on the sub-system , we can use different agents with access to different tools.
 5. Tools : Each agent has access to tools (APIs,Repos,libraries etc)
 
-The above components are common for all sub-systems. 
+The above components would be common for all sub-systems. 
 
-## Data preprocessing sub-system
+## Data preprocessing agent
 
 ![](assets/data_process_agent.png)
 
