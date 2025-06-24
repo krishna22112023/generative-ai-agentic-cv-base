@@ -46,8 +46,8 @@ uv sync
 
 #### Configure .env file in environment
 
-#### Run the project
+#### Start a local server
 ```bash
-uv run main.py
+uv run server.py
 ```
-The above will start a cli session 
+The above will start a cli session at http://0.0.0.0:8000 
