@@ -1,13 +1,3 @@
-# Agentic MLOPs for computer vision model using langgraph
-
-- The system could consist of multiple multi-agent systems each focused on a separate part of a typical CV MLOps pipeline
-- Sub-systems include but not limited to : 
-1. **Data preprocessing** : Data collection, quality assessment, preprocessing and auto-annotation.
-2. **Modelling** : Training/finetuning framework for the desired CV model using the processed dataset
-3. **MLOps** : Model containerization and deployment
-4. **Monitoring and observability** : Model performance monitoring and retrain trigger logic. 
-
-![](assets/overview.png)
 
 ### Agentic Data preprocessing  
 
