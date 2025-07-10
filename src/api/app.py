@@ -99,6 +99,14 @@ class ChatRequest(BaseModel):
     search_before_planning: Optional[bool] = Field(
         False, description="Whether to search before planning"
     )
+    team_members: Optional[List[str]] = Field(
+        default_factory=list,
+        description="List of team members associated with this request",
+    )
+    dataset: Optional[Dict[str, Optional[str]]] = Field(
+        None,
+        description="Dataset context containing project_id, version_id, bucket_name, and project_name",
+    )
    #workflow_id: str = Field(..., description="ID of the workflow to resume")
    #user_input: str = Field(..., description="User input to continue the workflow")
 
