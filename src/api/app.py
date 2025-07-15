@@ -66,7 +66,7 @@ app.add_middleware(
 )
 
 # Create the graph
-graph = build_graph(use_mcp=USE_MCP)
+graph = build_graph()
 
 # Store for interrupted workflow state
 workflow_states = {}

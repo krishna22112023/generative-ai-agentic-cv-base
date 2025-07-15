@@ -34,8 +34,6 @@ dependencies = [
     "accelerate",
     "sentencepiece",
     "icecream",
-    "mcp",
-    "langchain-mcp-adapters",
     "scikit-learn",
     "roboflow",
     "autodistill-grounded-sam",

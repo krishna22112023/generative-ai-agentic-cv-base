@@ -17,7 +17,7 @@ def enable_debug_logging():
 logger = logging.getLogger(__name__)
 
 # Create the graph
-graph = build_graph(use_mcp=USE_MCP)
+graph = build_graph()
 
 
 def run_agent_workflow(user_input: str, debug: bool = False):

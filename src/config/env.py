@@ -23,3 +23,4 @@ VL_API_KEY = os.getenv("VL_API_KEY")
 
 # Chrome Instance configuration
 CHROME_INSTANCE_PATH = os.getenv("CHROME_INSTANCE_PATH")
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
