@@ -15,7 +15,7 @@ import contextlib
 from typing import AsyncGenerator, Dict, List, Any
 
 from src.graph import build_graph
-from src.config import TEAM_MEMBERS, USE_MCP
+from src.config import TEAM_MEMBERS
 from src.service.workflow_service import run_agent_workflow
 from src.utils.versioning import ensure_dataset_async
 

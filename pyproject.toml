@@ -37,7 +37,8 @@ dependencies = [
     "scikit-learn",
     "roboflow",
     "autodistill-grounded-sam",
-    "boto3"]
+    "boto3",
+    "dvc"]
 
 [project.optional-dependencies]
 dev = [

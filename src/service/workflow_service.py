@@ -3,7 +3,7 @@ import asyncio
 from typing import Dict, Any, Optional
 from langgraph.types import Command
 
-from src.config import TEAM_MEMBERS, USE_MCP
+from src.config import TEAM_MEMBERS
 from src.graph import build_graph
 from langchain_community.adapters.openai import convert_message_to_dict
 import uuid

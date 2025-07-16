@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional, Dict
 from typing_extensions import TypedDict
 from langgraph.graph import MessagesState
 

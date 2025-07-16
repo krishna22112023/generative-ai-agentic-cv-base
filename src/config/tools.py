@@ -8,10 +8,10 @@ load_dotenv(os.path.join(root,".env"))
 
 # Tool configuration
 IQA_API_KEY= os.getenv("BASIC_API_KEY") #for image quality analysis
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
-MINIO_SECRET_KEY= os.getenv("MINIO_SECRET_KEY")
-MINIO_ENDPOINT_URL= os.getenv("MINIO_ENDPOINT_URL")
-BUCKET_NAME=os.getenv("BUCKET_NAME")
+MINIO_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
+MINIO_SECRET_KEY= os.getenv("AWS_SECRET_KEY")
+MINIO_ENDPOINT_URL= os.getenv("AWS_ENDPOINT_URL")
+BUCKET_NAME=os.getenv("AWS_BUCKET_NAME")
 
 # Preprocessor configuration
 ABS_PATH_TO_PYTHON_ENV = "/Users/krishnaiyer/miniforge3/envs/restormer/bin/python"
@@ -28,8 +28,6 @@ MCP_TOOL_MAP: dict[str, list] = {
     "data_annotator": ["annotator"],
     "reporter":[]
 }
-
-USE_MCP = False
 
 PREPROCESSOR_MODEL_MAP: dict[str, dict[str, list[str]]] = {
     "restormer": {

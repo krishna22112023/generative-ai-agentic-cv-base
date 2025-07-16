@@ -141,7 +141,7 @@ def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]]:
     logger.info("Planner generating full plan")
     messages = apply_prompt_template("planner", state)
     # whether to enable deep thinking mode
-    llm = get_llm_by_type("basic")
+    llm = get_llm_by_type(AGENT_LLM_MAP["planner"])
     if state.get("deep_thinking_mode"):
         llm = get_llm_by_type("reasoning")
     stream = llm.stream(messages)
