@@ -16,6 +16,5 @@ agent_history.gif
 
 .idea/
 
-data/** 
 modules/**
 model_zoo/**
