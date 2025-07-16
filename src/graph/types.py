@@ -25,6 +25,7 @@ class State(MessagesState):
     full_plan: str
     deep_thinking_mode: bool
     search_before_planning: bool
+    dataset: Optional[Dict[str, Optional[str]]]
 
     # human in the loop interaction
     # human_in_the_loop: str

@@ -1,7 +1,7 @@
 """
 FastAPI application for AgenticVision.
 """
-
+import os
 import json
 import logging
 from typing import Dict, List, Any, Optional, Union
@@ -17,6 +17,7 @@ from typing import AsyncGenerator, Dict, List, Any
 from src.graph import build_graph
 from src.config import TEAM_MEMBERS, USE_MCP
 from src.service.workflow_service import run_agent_workflow
+from src.utils.versioning import ensure_dataset_async
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -146,6 +147,23 @@ async def chat_endpoint(request: ChatRequest, req: Request):
                 message_dict["content"] = content_items
 
             messages.append(message_dict)
+        
+        if request.dataset:
+            project_name = request.dataset.get("project_name")
+            version_id = request.dataset.get("version_id")
+            bucket_name = request.dataset.get("bucket_name")
+            
+            if project_name and version_id:
+                try:
+                    await ensure_dataset_async(project_name, version_id, bucket_name)
+                    os.environ["DATA_DIR"] = f"data/{project_name}"
+                    os.environ["DATA_VERSION"] = version_id
+                    os.environ["BUCKET_NAME"] = bucket_name
+                except HTTPException as http_exc:
+                    raise http_exc
+                except Exception as exc:
+                    logger.error(f"Failed to prepare dataset {project_name}@{version_id}: {exc}")
+                    raise HTTPException(status_code=500, detail="Dataset preparation failed")
 
         async def event_generator():
             try:

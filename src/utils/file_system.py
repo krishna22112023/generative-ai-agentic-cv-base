@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 
 root = pyprojroot.find_root(pyprojroot.has_dir("src"))
-from src.config import PATHS
+DATA_DIR = os.getenv("DATA_DIR")
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ def list_dir() -> List[str]:
         FileNotFoundError: If the directory does not exist.
         NotADirectoryError: If the specified path is not a directory.
     """
-    path = Path(PATHS["data"])
+    path = DATA_DIR
     if not path.exists():
         logger.info(f"The directory {path} does not exist.")
         create_dir(path)

@@ -12,20 +12,18 @@ from langchain_core.tools import tool
 from .decorators import log_io
 
 from src.utils.IQA import nr_iqa,fr_iqa,vlm_nr_iqa,get_metadata
-from src.config import PATHS
+
+root = pyprojroot.find_root(pyprojroot.has_dir("src"))
+DATA_DIR = os.getenv("DATA_DIR")
 
 logger = logging.getLogger(__name__)
 
 @tool()
 @log_io
-def no_reference_iqa(prefix:str) -> Tuple[Dict,Dict]:
+def no_reference_iqa() -> Tuple[Dict,Dict]:
     """
     Computes no-reference image quality assessment (NR-IQA) using pretrained models,
     without needing a reference image.
-
-    The function relies on the following folder structure under the given prefix:
-    - Raw images: PATHS['raw']/{prefix}
-    - Artefacts (logs, outputs): PATHS['artefacts']/{prefix}
 
     The function currently supports two methods:
     
@@ -55,15 +53,11 @@ def no_reference_iqa(prefix:str) -> Tuple[Dict,Dict]:
     - High
     - Very High
 
-    Args:
-        prefix (str): prefix name in minio bucket
-
     Returns:
         Tuple: Returns a dictionary of all metrics for each each image and the average score across all images in the input folder.
     """
-    logger.info(f"Using prefix {prefix}")
-    input_path = f"{PATHS['raw']}/{prefix}"
-    artefacts_path = f"{PATHS['artefacts']}/{prefix}"
+    input_path = f"{DATA_DIR}/raw"
+    artefacts_path = f"{DATA_DIR}/artefacts"
     os.makedirs(artefacts_path,exist_ok=True)
 
     # collect metadata
@@ -92,7 +86,7 @@ def no_reference_iqa(prefix:str) -> Tuple[Dict,Dict]:
 
 @tool()
 @log_io
-def verify_no_reference_iqa(prefix: str) -> list:
+def verify_no_reference_iqa() -> list:
     """
     For each image under processed/<prefix>/<image>/models/<model>.jpg:
       1) load raw BRISQUE/QAlign from nr_iqa_results_raw.json
@@ -104,10 +98,10 @@ def verify_no_reference_iqa(prefix: str) -> list:
     Returns list of images where no model improved both metrics.
     """
     # paths
-    raw_scores_path     = os.path.join(PATHS['artefacts'], prefix, 'nr_iqa_results_raw.json')
-    proc_root           = os.path.join(PATHS['processed'], prefix)
-    final_root          = os.path.join(PATHS['processed_final'], prefix)
-    metrics_out_path    = os.path.join(PATHS['artefacts'], prefix, 'preprocess_comparison_metrics.json')
+    raw_scores_path     = os.path.join(DATA_DIR,'artefacts', 'nr_iqa_results_raw.json')
+    proc_root           = os.path.join(DATA_DIR,'processed')
+    final_root          = os.path.join(DATA_DIR,'processed_final')
+    metrics_out_path    = os.path.join(DATA_DIR,'artefacts', 'preprocess_comparison_metrics.json')
     os.makedirs(final_root, exist_ok=True)
     os.makedirs(os.path.dirname(metrics_out_path), exist_ok=True)
 
@@ -182,41 +176,6 @@ def verify_no_reference_iqa(prefix: str) -> list:
 
     return comparison
 
-@tool()
-@log_io
-def full_reference_iqa(prefix:str) -> Tuple[Dict,Dict]: 
-    """
-    Computes full-reference image quality assessment (FR-IQA) scores for images in a given MinIO bucket prefix.
-    
-    This function compares processed images against their corresponding reference images using standard 
-    full-reference IQA metrics. The comparison is done on a per-image basis and supports multiple metrics 
-    including PSNR, SSIM, MSE, and GMSD.
-
-    The function relies on the following folder structure under the given prefix:
-    - Processed images: PATHS['processed']/{prefix}
-    - Reference images: PATHS['raw']/{prefix}
-    - Artefacts (logs, outputs): PATHS['artefacts']/{prefix}
-
-    Supported metrics:
-    - PSNR (Peak Signal-to-Noise Ratio)
-    - SSIM (Structural Similarity Index)
-    - MSE (Mean Squared Error)
-    - GMSD (Gradient Magnitude Similarity Deviation)
-
-    Args:
-        prefix (str): The prefix name used to locate folders in the MinIO bucket.
-
-    Returns:
-        Tuple[Dict[str, Dict[str, float]], Dict[str, float]]:
-            - A nested dictionary mapping each filename to its computed metrics.
-            - A dictionary of mean metric scores across all processed images.
-    """
-    input_path = f"{PATHS['processed']}/{prefix}"
-    reference_path = f"{PATHS['raw']}/{prefix}"
-    artefacts_path = f"{PATHS['artefacts']}/{prefix}" 
-    os.makedirs(artefacts_path,exist_ok=True)
-    scores, mean_scores = fr_iqa(input_path, artefacts_path, reference_path)
-    return scores,mean_scores
 
 if __name__ == "__main__":
     comparison = verify_no_reference_iqa("Test")

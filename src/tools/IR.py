@@ -14,10 +14,10 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import tempfile
 
 from .decorators import log_io
-from src.config import PATHS,PREPROCESSOR_MODEL_MAP,MODEL_SCRIPT_CONFIG
+from src.config import PREPROCESSOR_MODEL_MAP,MODEL_SCRIPT_CONFIG
 
 root = pyprojroot.find_root(pyprojroot.has_dir("src"))
-sys.path.append(str(root))
+DATA_DIR = os.getenv("DATA_DIR")
 
 logging.basicConfig(
     level=logging.INFO,  # Set the minimum logging level
@@ -31,19 +31,18 @@ logger = logging.getLogger(__name__)
 
 @tool()
 @log_io
-def create_ir_pipeline(prefix:str,pipeline:Optional[str]) -> str:
+def create_ir_pipeline(pipeline:Optional[str]) -> str:
     """_summary_
 
     Args:
-        prefix (str): prefix name in minio bucket
         pipeline (Optional[str]): Optional custom pipeline from user to be applied to all images 
 
     Returns:
         str: summary of the pipeline to be executed
     """
     logger.info("Generating pipeline for image restoration tasks.")
-    artefacts_path = f"{PATHS['artefacts']}/{prefix}"
-    raw_path = f"{PATHS['raw']}/{prefix}"
+    artefacts_path = f"{DATA_DIR}/artefacts"
+    raw_path = f"{DATA_DIR}/raw"    
     iqa_results_path = os.path.join(artefacts_path, "degredation_iqa_results.json")
     inferred_pipeline = {}
     if not pipeline:
@@ -90,7 +89,7 @@ def create_ir_pipeline(prefix:str,pipeline:Optional[str]) -> str:
 
     return json.dumps(inferred_pipeline)
 
-def process_single_image(prefix: str, filename: str) -> None:
+def process_single_image(filename: str) -> None:
     """
     Process one image through every model/task chain:
       a) Copy raw image into its own temp folder.
@@ -98,14 +97,13 @@ def process_single_image(prefix: str, filename: str) -> None:
       c) Copy final outputs back to processed/<prefix>/<image>/models/<model>/<filename>.
 
     args:
-      prefix   – The dataset subfolder (e.g. "Test").
-      filename – e.g. "foggy-001.jpg"
+      filename: e.g. "foggy-001.jpg"
     """
     # Build all the key paths
-    raw_folder      = os.path.join(PATHS["raw"], prefix)
-    artefacts_folder= os.path.join(PATHS["artefacts"], prefix)
-    proc_root       = os.path.join(PATHS["processed"], prefix)
-    proc_final      = os.path.join(PATHS["processed_final"], prefix)
+    raw_folder      = os.path.join(DATA_DIR,"raw")
+    artefacts_folder= os.path.join(DATA_DIR,"artefacts")
+    proc_root       = os.path.join(DATA_DIR,"processed")
+    proc_final      = os.path.join(DATA_DIR,"processed_final")
 
     # Read this image’s entry in the pipeline JSON
     pipeline_path = os.path.join(artefacts_folder, "preprocessing_pipeline.json")
@@ -228,14 +226,14 @@ def process_single_image(prefix: str, filename: str) -> None:
 
 @tool()
 @log_io
-def run_ir_pipeline(prefix: str) -> bool:
+def run_ir_pipeline() -> bool:
     """
     Dispatch all images in parallel through `process_single_image`.
     Returns False only if pipeline spec is missing.
     """
     max_workers = 2
-    artefacts_folder = os.path.join(PATHS["artefacts"], prefix)
-    raw_folder       = os.path.join(PATHS["raw"], prefix)
+    artefacts_folder = os.path.join(DATA_DIR,"artefacts")
+    raw_folder       = os.path.join(DATA_DIR,"raw")
 
     pipeline_path = os.path.join(artefacts_folder, "preprocessing_pipeline.json")
     if not os.path.exists(pipeline_path):
