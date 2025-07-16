@@ -1,0 +1,6 @@
+outs:
+- md5: e3aa3e16003eb194667c104d095e28b2.dir
+  size: 55200
+  nfiles: 4
+  hash: md5
+  path: Car Models
