@@ -4,6 +4,7 @@ FastAPI application for AgenticVision.
 import os
 import json
 import logging
+import pyprojroot
 from typing import Dict, List, Any, Optional, Union
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
@@ -21,6 +22,8 @@ from src.utils.versioning import ensure_dataset_async
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+root = pyprojroot.find_root(pyprojroot.has_dir("src"))
 
 # Modify the FastAPI app to use a lifespan context
 @contextlib.asynccontextmanager
@@ -152,13 +155,13 @@ async def chat_endpoint(request: ChatRequest, req: Request):
             project_name = request.dataset.get("project_name")
             version_id = request.dataset.get("version_id")
             bucket_name = request.dataset.get("bucket_name")
+            logger.info(f"Received dataset request --> project_name: {project_name}, version_id: {version_id}, bucket_name: {bucket_name}")
             
             if project_name and version_id:
+                os.environ["DATA_DIR"] = f"{root}/data/{project_name}"
+                logger.info(f"DATA_DIR set to {os.environ['DATA_DIR']}")
                 try:
                     await ensure_dataset_async(project_name, version_id, bucket_name)
-                    os.environ["DATA_DIR"] = f"data/{project_name}"
-                    os.environ["DATA_VERSION"] = version_id
-                    os.environ["BUCKET_NAME"] = bucket_name
                 except HTTPException as http_exc:
                     raise http_exc
                 except Exception as exc:

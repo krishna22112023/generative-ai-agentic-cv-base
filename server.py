@@ -1,7 +1,6 @@
 """
 Server script for running the API.
 """
-import os
 import logging
 import uvicorn
 import pyprojroot
@@ -21,8 +20,6 @@ logger = logging.getLogger(__name__)
 if __name__ == "__main__":
     logger.info("Starting API server")
     logger.info("Creating default directories for data")
-    for i in ["downloads","raw","processed","processed_final","artefacts"]:
-        os.makedirs(os.path.join(root,"data",i),exist_ok=True)
     uvicorn.run(
         "src.api.app:app",
         host="0.0.0.0",

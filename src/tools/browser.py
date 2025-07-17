@@ -9,15 +9,6 @@ from browser_use.browser.context import BrowserContextConfig
 from browser_use import Agent as BrowserAgent
 from src.tools.decorators import create_logged_tool
 
-root = pyprojroot.find_root(pyprojroot.has_dir("src"))
-from datetime import datetime
-
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-expected_browser = Browser(
-    config=BrowserConfig(
-        new_context_config=BrowserContextConfig(save_downloads_path=os.path.join(root, "data/downloads",f"ext_{timestamp}")),
-    )
-)
 
 class BrowserUseInput(BaseModel):
     """Input for WriteFileTool."""
@@ -37,6 +28,12 @@ class BrowserTool(BaseTool):
     def _run(self, instruction: str) -> str:
         """Run the browser task synchronously."""
         from src.agents.llm import vl_llm  # Import inside method to avoid circular dependency
+        DATA_DIR = os.getenv("DATA_DIR")
+        expected_browser = Browser(
+        config=BrowserConfig(
+            new_context_config=BrowserContextConfig(save_downloads_path=f"{DATA_DIR}/Downloads"),
+            )
+        )
         self._agent = BrowserAgent(
             task=instruction,  # Will be set per request
             llm=vl_llm,

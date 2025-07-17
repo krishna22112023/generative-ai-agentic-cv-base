@@ -38,7 +38,9 @@ dependencies = [
     "roboflow",
     "autodistill-grounded-sam",
     "boto3",
-    "dvc"]
+    "dvc",
+    "dvc-s3",
+    "botorch"]
 
 [project.optional-dependencies]
 dev = [

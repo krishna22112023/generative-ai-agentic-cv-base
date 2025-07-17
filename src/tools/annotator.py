@@ -1,5 +1,4 @@
 import os
-import pyprojroot
 import logging
 import warnings
 warnings.filterwarnings("ignore")
@@ -12,9 +11,6 @@ from autodistill.detection import CaptionOntology
 
 from .decorators import log_io
 
-root = pyprojroot.find_root(pyprojroot.has_dir("src"))
-DATA_DIR = os.getenv("DATA_DIR")
-
 @tool
 @log_io
 def grounded_annotator(classes: List[str]) -> bool:
@@ -22,6 +18,7 @@ def grounded_annotator(classes: List[str]) -> bool:
     Annotates images in the specified directory with bounding boxes and class labels.
     classes (List[str]): A list of class labels to use for annotation.
     """
+    DATA_DIR = os.getenv("DATA_DIR")
     input_path = f"{DATA_DIR}/processed_final"
     classes = {k:v for k,v in zip(classes,classes)}
     try:

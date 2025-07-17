@@ -5,6 +5,7 @@ import asyncio
 import logging
 from functools import partial
 from typing import Dict
+import re
 
 import pyprojroot
 from src.utils.minio import Read
@@ -15,10 +16,21 @@ logger = logging.getLogger(__name__)
 
 _dataset_locks: Dict[str, asyncio.Lock] = {}
 
+_TAG_SAFE_CHARS = r"[^0-9A-Za-z._-]"
+
+
+def _slugify(name: str) -> str:
+    """Return a git-safe slug (replace disallowed chars with '_')."""
+    return re.sub(_TAG_SAFE_CHARS, "_", name.strip())
+
 
 def _build_tag(project_name: str, version_id: str) -> str:
-    """Return canonical git tag name for the dataset version."""
-    return f"{project_name}-v{version_id}"
+    """Return canonical git tag name for the dataset version.
+
+    Git tag refs cannot contain spaces or many special chars. We slugify the
+    *project_name* portion so that the tag is always valid while still
+    reversibly encoding the original name (spaces -> '_', etc.)."""
+    return f"{_slugify(project_name)}-v{version_id}"
 
 
 def _run(cmd: list[str]) -> None:
@@ -31,7 +43,7 @@ def dvc_add_commit_push(dataset_path: str, project_name: str, version_id: str) -
 
     Args:
         dataset_path: str
-            Local path to the dataset directory (e.g. 'data/raw/my_project').
+            Local path to the dataset directory (e.g. 'data/my_project').
         project_name: str
             Name of the project (used in tag).
         version_id: str
@@ -56,13 +68,35 @@ def dvc_add_commit_push(dataset_path: str, project_name: str, version_id: str) -
 
 
 def dvc_pull(project_name: str, version_id: str) -> None:
-    """Blocking pull for the requested dataset version.
+    """Ensure *project_name*\@*version_id* exists locally via DVC.
 
-    Downloads the dataset only if it is missing/outdated; otherwise exits quickly.
+    Strategy:
+    1. Fetch the git tag (created by :func:`dvc_add_commit_push`).
+    2. Temporarily check it out in detached-HEAD mode.
+    3. Run ``dvc pull`` for the dataset path.
+    4. Restore the previous branch/commit.
     """
     tag = _build_tag(project_name, version_id)
-    dataset_rel_path = os.path.join("data", "raw", project_name)
-    _run(["dvc", "pull", "--rev", tag, dataset_rel_path])
+    dataset_rel_path = os.path.join("data", project_name)
+
+    # Remember original HEAD so we can restore it afterwards.
+    current_head = subprocess.check_output(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True
+    ).strip()
+
+    try:
+        # Make sure the tag exists locally.
+        _run(["git", "fetch", "origin", tag])
+
+        # Checkout the tag (detached HEAD)
+        _run(["git", "checkout", tag])
+
+        # Pull the dataset files for that revision
+        _run(["dvc", "pull", dataset_rel_path])
+
+    finally:
+        # Always return to the original HEAD (branch or commit).
+        _run(["git", "checkout", current_head])
 
 
 def download_from_minio(project_name: str, bucket_name: str) -> str:
@@ -75,26 +109,29 @@ def download_from_minio(project_name: str, bucket_name: str) -> str:
     Returns:
         Local path where the dataset was downloaded
     """
-    # Ensure data directory exists
-    data_dir = os.path.join(_root, "data")
-    os.makedirs(data_dir, exist_ok=True)
-    
-    # MinIO path (project_name/ includes raw/, processed/, annotated/ subdirs)
+    # Ensure top-level data directory exists (mirrors MinIO structure exactly)
+    data_root = os.path.join(_root, "data")
+    os.makedirs(data_root, exist_ok=True)
+
+    # MinIO prefix (e.g. "My Project/") and local destination
     minio_prefix = f"{project_name}/"
-    
-    # Download using existing minio utility
+
+    # Download using existing MinIO utility
     reader = Read()
-    success = reader.download_object(minio_prefix, data_dir)
-    
+    success = reader.download_object(minio_prefix, data_root)
+
     if not success:
-        raise RuntimeError(f"Failed to download {project_name} from MinIO bucket {bucket_name}")
-    
-    logger.info(f"Downloaded {project_name} from MinIO to {local_dataset_path}")
+        raise RuntimeError(
+            f"Failed to download {project_name} from MinIO bucket {bucket_name}"
+        )
+
+    local_dataset_path = os.path.join(data_root, project_name)
+    logger.info("Downloaded %s from MinIO to %s", project_name, local_dataset_path)
     return local_dataset_path
 
 
 async def ensure_dataset_async(project_name: str, version_id: str | None, bucket_name: str | None = None) -> None:
-    """Guarantee that *data/raw/<project_name>* for *version_id* is present locally.
+    """Guarantee that *project_name* for *version_id* is present locally.
 
     Workflow:
     1. Try to pull existing version from DVC

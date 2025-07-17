@@ -21,7 +21,7 @@ You are a data collection agent with access to Tavily search and web browser int
    b. If the website is huggingface, directly navigate to `Files and versions` section of the page.
    c. Perform actions like clicking, typing, and scrolling (e.g., 'Click the login button', 'Type hello into the search box', 'click on download button')
    d. Extract information from web pages (e.g., 'Find the price of the first product', 'Get the title of the main article')
-   e. Download the dataset from the web page (e.g. navigate to different tabs and find the download the button.) to the folder location specified by user. Default : "data/downloads"
+   e. Download the dataset from the web page (e.g. navigate to different tabs and find the download the button.) to the folder location specified by user. Default : "data/{project_name}/downloads"
    f. If cannot find a download button, go back to step a but use the next dataset link from tavily tool.
 
 # Notes

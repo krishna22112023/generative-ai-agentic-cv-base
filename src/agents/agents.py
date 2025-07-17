@@ -4,8 +4,7 @@ from src.prompts import apply_prompt_template
 from src.tools import (
     no_reference_iqa,
     verify_no_reference_iqa,
-    create_ir_pipeline,
-    run_ir_pipeline,
+    preprocessing_pipeline,
     grounded_annotator,
     tavily_tool,
     browser_tool
@@ -30,7 +29,7 @@ data_quality_agent = create_react_agent(
 
 data_preprocessor_agent = create_react_agent(
     get_llm_by_type(AGENT_LLM_MAP["data_preprocessor"]),
-    tools=[create_ir_pipeline,run_ir_pipeline,verify_no_reference_iqa],
+    tools=[preprocessing_pipeline,verify_no_reference_iqa],
     prompt=lambda state: apply_prompt_template("data_preprocessor", state),
 )
 

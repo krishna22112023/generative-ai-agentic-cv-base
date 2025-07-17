@@ -56,17 +56,30 @@ class Read:
         # The object key includes the prefix like so : prefix_name/file_name.extension
         overall_success = True
         for obj in objects:
-            key = obj.get('Key')
-            logger.info(f"minio object key found {key} ")
+            key = obj.get("Key")
+
+            # Skip "directory" placeholders (keys that end with "/").
+            if key.endswith("/"):
+                logger.debug("Skipping prefix placeholder %s", key)
+                continue
+
+            logger.info("minio object key found %s", key)
+
             local_file_path = os.path.join(output_path, key)
-            logger.info(f"creating a directory if does not exist {os.path.dirname(local_file_path)}")
+            logger.info(
+                "creating a directory if does not exist %s", os.path.dirname(local_file_path)
+            )
             os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
+
             try:
-                self.client.download_file(Bucket=BUCKET_NAME, Key=key, Filename=local_file_path)
-                logger.info(f"Downloaded {key} to {output_path}")
+                self.client.download_file(
+                    Bucket=BUCKET_NAME, Key=key, Filename=local_file_path
+                )
+                logger.info("Downloaded %s to %s", key, output_path)
             except ClientError as e:
-                logger.error(f"Error downloading {key} to {output_path}: {e}")
+                logger.error("Error downloading %s to %s: %s", key, output_path, e)
                 overall_success = False
+
         return overall_success
 
 class Create:

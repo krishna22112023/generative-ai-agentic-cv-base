@@ -1,6 +1,5 @@
 import os
 import json
-import pyprojroot
 from pathlib import Path
 import shutil
 import logging
@@ -12,10 +11,7 @@ from transformers import AutoModelForCausalLM
 from langchain_core.tools import tool
 from .decorators import log_io
 
-from src.utils.IQA import nr_iqa,fr_iqa,vlm_nr_iqa,get_metadata
-
-root = pyprojroot.find_root(pyprojroot.has_dir("src"))
-DATA_DIR = os.getenv("DATA_DIR")
+from src.utils.IQA import nr_iqa,get_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -33,30 +29,17 @@ def no_reference_iqa() -> Tuple[Dict,Dict]:
          with corresponding differential mean opinion score (DMOS) values.
        - Score range: [0, 100], where 100 indicates the worst quality and 0 is excellent.
 
-    2. **qalign**:
-       - Rates image quality on a categorical scale: Excellent, Good, Fair, Poor, Bad.
-       - Computes a weighted average of the probabilities for each class.
-       - Score range: [1, 5], where 5 is excellent and 1 is bad.
-
-    Based on these metrics, the function uses a VLM to classify images into the following seven degradation types:
-    - Noise
-    - Motion Blur
-    - Defocus Blur
-    - Haze
-    - Rain
-    - Dark
-    - JPEG Compression Artifact
-
-    Each degradation is assigned one of five severity levels:
-    - Very Low
-    - Low
-    - Medium
-    - High
-    - Very High
+    Each degradation is assigned one of five severity levels based on the BRISQUE score:
+    0-20 → “very low” 
+    20-40 → “low” 
+    40-60 → “medium”
+    60-80 → “high” 
+    80-100 → “very high” 
 
     Returns:
-        Tuple: Returns a dictionary of all metrics for each each image and the average score across all images in the input folder.
+        Tuple: Return a dictionary of the number of images and the average score in each degradation severity level
     """
+    DATA_DIR = os.getenv("DATA_DIR")
     input_path = f"{DATA_DIR}/raw"
     artefacts_path = f"{DATA_DIR}/artefacts"
     os.makedirs(artefacts_path,exist_ok=True)
@@ -67,23 +50,18 @@ def no_reference_iqa() -> Tuple[Dict,Dict]:
     with open(os.path.join(artefacts_path,'metadata.json'), 'w') as f:
         json.dump(stats, f, indent=4)
 
-    #compute nr iqa scores
     #load models
-    qalign_model = AutoModelForCausalLM.from_pretrained("q-future/one-align", trust_remote_code=True, attn_implementation="eager", 
-                                        torch_dtype=torch.float16, device_map="auto")
     brisque_model = cv2.quality.QualityBRISQUE_create("src/config/brisque/brisque_model_live.yml","src/config/brisque/brisque_range_live.yml")
-    nr_iqa_scores, mean_nr_iqa_scores = nr_iqa(input_path,qalign_model, brisque_model)
-    logger.info("no-reference iqa scores computed")
+    logger.info("BRISQUE scores computing...")
+    scores,scores_by_severity = nr_iqa(input_path, brisque_model)
+    logger.info("BRISQUE scores computed...")
+    
     with open(os.path.join(artefacts_path, "nr_iqa_results_raw.json"), 'w') as f:
-        json.dump(nr_iqa_scores, f, indent=4)
+        json.dump(scores, f, indent=4)
+    with open(os.path.join(artefacts_path, "nr_iqa_results_by_raw_severity.json"), 'w') as f:
+        json.dump(scores_by_severity, f, indent=4)
 
-    #compute vlm nr iqa scores
-    vlm_nr_iqa_scores, agg_vlm_nr_iqa_scores = vlm_nr_iqa(input_path,artefacts_path,nr_iqa_scores)
-    logger.info("vlm no-reference iqa scores computed")
-    with open(os.path.join(artefacts_path, "degredation_iqa_results.json"), 'w') as f:
-        json.dump(vlm_nr_iqa_scores, f, indent=4)
-
-    return json.dumps(mean_nr_iqa_scores),json.dumps(agg_vlm_nr_iqa_scores)
+    return json.dumps(scores_by_severity)
 
 @tool()
 @log_io
