@@ -1,6 +1,6 @@
 outs:
-- md5: 060f6c5958822cebba82db017cfa3523.dir
-  size: 41532
-  nfiles: 6
+- md5: 45a0c89308bf74c096d7b21b9d949017.dir
+  size: 95880
+  nfiles: 12
   hash: md5
   path: Cats
