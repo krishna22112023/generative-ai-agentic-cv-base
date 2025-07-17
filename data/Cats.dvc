@@ -1,0 +1,6 @@
+outs:
+- md5: 89b5d37cabca489c0731ef1df419fe9b.dir
+  size: 41071
+  nfiles: 5
+  hash: md5
+  path: Cats
