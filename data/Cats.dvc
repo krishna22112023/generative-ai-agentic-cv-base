@@ -1,6 +1,6 @@
 outs:
-- md5: ca7e31085663b03454484eed0191a335.dir
-  size: 96931
-  nfiles: 14
+- md5: 0a0d92c046f003e0db6f31867634db92.dir
+  size: 495834
+  nfiles: 18
   hash: md5
   path: Cats
