@@ -159,6 +159,7 @@ async def chat_endpoint(request: ChatRequest, req: Request):
             
             if project_name and version_id:
                 os.environ["DATA_DIR"] = f"{root}/data/{project_name}"
+                os.environ["PROJECT_NAME"] = project_name
                 logger.info(f"DATA_DIR set to {os.environ['DATA_DIR']}")
                 try:
                     await ensure_dataset_async(project_name, version_id, bucket_name)

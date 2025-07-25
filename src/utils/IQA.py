@@ -32,24 +32,29 @@ def nr_iqa(
     Raises:
         ValueError: If no valid images are processed or if any requested metric is unsupported.
     """
-
+    logger.info(f"Computing BRISQUE scores")
     scores = {}
     ext = ["jpg","jpeg","png"]
     for e in ext:
-        for img_path in Path(input_dir).glob(e):
+        for img_path in Path(input_dir).glob(f"*.{e}"):
             fname = img_path.name
             # BRISQUE
             gray = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
             try:
                 b = brisque_model.compute(gray)
                 brisque_score = float(b[0] if isinstance(b, (list,tuple)) else b)
+                logger.info(f"BRISQUE score for {fname}: {brisque_score}")
             except Exception as e:
                 logger.warning(f"BRISQUE failed for {fname}: {e}")
                 brisque_score = None
-
             scores[fname] = {'brisque': brisque_score}
+    if len(scores) > 0:
+        logger.info(f"BRISQUE scores computed for {len(scores)} images")
+    else:
+        logger.warning("No images found in the input directory, check path or no images found in the current directory")
 
     # classify images into severity levels
+    logger.info(f"Classifying images into severity levels")
     scores_by_severity = {
         "very low": {"count":0,"avg_score":0},
         "low": {"count":0,"avg_score":0},
@@ -57,29 +62,37 @@ def nr_iqa(
         "high": {"count":0,"avg_score":0},
         "very high": {"count":0,"avg_score":0}
     }
-    severity_levels = [20,40,60,80,100]
-    for fname, score in scores.items():
-        brisque_score = score['brisque']
-        if brisque_score is None:
-            continue
-        elif brisque_score < 20:
-            scores_by_severity["very low"]["count"] += 1
-            scores_by_severity["very low"]["avg_score"] += brisque_score
-        elif brisque_score < 40:
-            scores_by_severity["low"]["count"] += 1
-            scores_by_severity["low"]["avg_score"] += brisque_score
-        elif brisque_score < 60:
-            scores_by_severity["medium"]["count"] += 1
-            scores_by_severity["medium"]["avg_score"] += brisque_score
-        elif brisque_score < 80:
-            scores_by_severity["high"]["count"] += 1
-            scores_by_severity["high"]["avg_score"] += brisque_score
-        else:
-            scores_by_severity["very high"]["count"] += 1
-            scores_by_severity["very high"]["avg_score"] += brisque_score
+    try:
+        for fname, score in scores.items():
+            brisque_score = score['brisque']
+            if brisque_score is None:
+                continue
+            elif brisque_score < 20:
+                scores_by_severity["very low"]["count"] += 1
+                scores_by_severity["very low"]["avg_score"] += brisque_score
+            elif brisque_score < 40:
+                scores_by_severity["low"]["count"] += 1
+                scores_by_severity["low"]["avg_score"] += brisque_score
+            elif brisque_score < 60:
+                scores_by_severity["medium"]["count"] += 1
+                scores_by_severity["medium"]["avg_score"] += brisque_score
+            elif brisque_score < 80:
+                scores_by_severity["high"]["count"] += 1
+                scores_by_severity["high"]["avg_score"] += brisque_score
+            else:
+                scores_by_severity["very high"]["count"] += 1
+                scores_by_severity["very high"]["avg_score"] += brisque_score
 
-    for severity in scores_by_severity:
-        scores_by_severity[severity]["avg_score"] /= scores_by_severity[severity]["count"]
+        for severity in scores_by_severity:
+            if scores_by_severity[severity]["count"] > 0:
+                scores_by_severity[severity]["avg_score"] /= scores_by_severity[severity]["count"]
+        
+        logger.info(f"Severity levels classified")
+        logger.info(f"Severity levels: {scores_by_severity}")
+    
+    except Exception as e:
+        logger.error(f"Error classifying images into severity levels: {e}")
+        raise e
 
     return scores,scores_by_severity
 
@@ -173,6 +186,10 @@ def get_metadata(input_path):
         'average_image_size': {'width': avg_w, 'height': avg_h},
         'median_aspect_ratio': median_ar
     }
+    if num_images > 0:
+        logger.info(f"Metadata generated, Number of images found: {num_images}")
+    else:
+        logger.warning("No images found in the input directory, check path or no images found in the current directory")
 
     return stats
 

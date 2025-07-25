@@ -153,8 +153,8 @@ class Delete:
             return False
 
 if __name__ == "__main__":
-    input_path = "DAWN/Fog"
-    output_path = "/Users/krishnaiyer/generative-ai-agentic-cv-base/data/raw"
+    input_path = "C:/Users/srikr/workspace/generative-ai-agentic-cv-base/data/Cats/artefacts"
+    output_path = "Cats/artefacts"
 
-    read = Read()
-    read.download_object(input_path, output_path)
+    read = Create()
+    read.upload_object(input_path, output_path)

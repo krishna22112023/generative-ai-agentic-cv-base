@@ -35,7 +35,8 @@ def _build_tag(project_name: str, version_id: str) -> str:
 
 def _run(cmd: list[str]) -> None:
     """Wrapper around subprocess.run with logging & error propagation."""
-    logger.debug("Running command: %s", " ".join(cmd))
+    # Log every shell command that we execute at INFO level so they are always visible
+    logger.info("Executing: %s", " ".join(cmd))
     subprocess.run(cmd, check=True)
 
 def dvc_add_commit_push(dataset_path: str, project_name: str, version_id: str) -> None:
@@ -63,8 +64,34 @@ def dvc_add_commit_push(dataset_path: str, project_name: str, version_id: str) -
     _run(["dvc", "push"])
 
     # 4) tag the commit and push tag
+    #
+    # We force-create/overwrite the tag locally ("git tag -f") so that reruns
+    # within the same repo always point the tag at the latest commit. However,
+    # pushing the tag with "git push --tags" can fail if the tag already exists
+    # in the remote and the remote is configured to reject updates (the default
+    # for GitHub). To make the workflow idempotent we:
+    #   1. Push the HEAD commit as usual
+    #   2. Push the *single* tag with --force-with-lease. If it already exists
+    #      and points to the same commit this is a no-op. If it exists but
+    #      differs we still overwrite because the local run is the source of
+    #      truth for this dataset version.
     _run(["git", "tag", "-f", tag])
-    _run(["git", "push", "origin", "HEAD", "--tags"])
+
+    # Push the new commit first (cannot use --force when pushing both HEAD and
+    # the tag together, so we split into two commands).
+    _run(["git", "push", "origin", "HEAD"])
+
+    # Now push/overwrite the tag. If this fails we log a warning but do not
+    # abort the whole flow because the dataset itself is already versioned and
+    # uploaded.
+    try:
+        _run(["git", "push", "--force-with-lease", "origin", tag])
+    except subprocess.CalledProcessError as exc:
+        logger.warning(
+            "Pushing tag %s failed (likely already exists remotely). Continuing. Error: %s",
+            tag,
+            exc,
+        )
 
 
 def dvc_pull(project_name: str, version_id: str) -> None:

@@ -23,8 +23,10 @@ from __future__ import annotations
 
 import json
 import os
+import logging
 import random
 import shutil
+import pyprojroot
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import product
 from pathlib import Path
@@ -33,19 +35,18 @@ from typing import Dict, List, Tuple
 import cv2
 import numpy as np
 import torch
-from botorch.acquisition.monte_carlo import qExpectedImprovement
+from botorch.acquisition.logei import qLogExpectedImprovement
 from botorch.models import SingleTaskGP
 from botorch.optim import optimize_acqf
 from botorch.sampling.normal import SobolQMCNormalSampler
 from botorch.utils.transforms import standardize
 from gpytorch.mlls.exact_marginal_log_likelihood import ExactMarginalLogLikelihood
+from botorch.fit import fit_gpytorch_mll
 
-from . import preprocess as pp
+from src.utils import preprocess as pp
+root = pyprojroot.find_root(pyprojroot.has_dir("src"))
 
-BRISQUE_MODEL = cv2.quality.QualityBRISQUE_create(
-    "src/config/brisque/brisque_model_live.yml",
-    "src/config/brisque/brisque_range_live.yml",
-)
+logger = logging.getLogger(__name__)
 
 # Map function index → callable + default params -------------------------------------------------
 PREPROCESS_FUNCS: List[Tuple[str, callable]] = [
@@ -75,25 +76,24 @@ NAME_TO_INDEX.pop("noop", None)
 
 
 def severity_of(score: float) -> str | None:
-    if score < 20:
+    if score <= 20:
         return "very low"
-    if score < 40:
+    elif score > 20 and score < 40:
         return "low"
-    if score < 60:
+    elif score > 40 and score < 60:
         return "medium"
-    if score < 80:
+    elif score > 60 and score < 80:
         return "high"
-    if score <= 100:
+    elif score > 80 and score <= 100:
         return "very high"
     return None
 
 
-def load_batches(input_path: Path) -> Dict[str, List[Path]]:
+def load_batches(artefacts_path: Path, input_path: Path) -> Dict[str, List[Path]]:
     """Return mapping severity → list[Path] (only medium & worse)."""
-    with open(Path(input_path) / "nr_iqa_results_raw.json", "r") as f:
+    with open(artefacts_path / Path("nr_iqa_results_raw.json"), "r") as f:
         raw_scores = json.load(f)
-
-    batches: Dict[str, List[Path]] = {"medium": [], "high": [], "very_high": []}
+    batches= {"medium": [], "high": [], "very_high": []}
     for fname, metrics in raw_scores.items():
         brisque = metrics.get("brisque")
         if brisque is None:
@@ -101,7 +101,7 @@ def load_batches(input_path: Path) -> Dict[str, List[Path]]:
         sev = severity_of(brisque)
         if sev in {"medium", "high", "very high"}:
             key = sev.replace(" ", "_")  # "very high" → "very_high"
-            batches[key].append(RAW_IMG_DIR / fname)
+            batches[key].append(input_path / Path(fname))
     return batches
 
 
@@ -111,16 +111,29 @@ def load_batches(input_path: Path) -> Dict[str, List[Path]]:
 
 
 def _apply_stage(image: np.ndarray, func_idx: int, params: Dict):
-    name, fn = PREPROCESS_FUNCS[func_idx]
+    """Apply a single preprocessing stage. Index 9 is a noop."""
+    if func_idx == 9:  # noop – return image untouched
+        return image
+
+    # Safe access – indices 0-8 are valid
+    try:
+        name, fn = PREPROCESS_FUNCS[func_idx]
+    except IndexError as e:
+        logger.error("Invalid func_idx %s – out of PREPROCESS_FUNCS range", func_idx)
+        raise
+
     # Dispatch parameters according to function signature
-    if name in {"blur", "gaussian_blur", "median_blur"}:  # square kernel
-        k = params["smooth_param"]
+    if name in {"blur", "gaussian_blur"}:  # square kernel filters
+        k = params["kernel_size"]
         return fn(image, ksize=(k, k))
+    if name == "median_blur":
+        k = params["kernel_size"]
+        return fn(image, ksize=k)
     if name == "bilateral_filter":
-        d = params["smooth_param"]
+        d = params["diameter"]
         return fn(image, d=d, sigmaColor=75, sigmaSpace=75)
     if name == "fast_nl_means_denoising_colored":
-        h = params["smooth_param"]
+        h = params["luminance"]
         return fn(image, h=h, hColor=h)
     if name == "equalize_hist":
         return fn(image)
@@ -130,8 +143,6 @@ def _apply_stage(image: np.ndarray, func_idx: int, params: Dict):
         return fn(image, alpha=params["alpha"], beta=0.0)
     if name == "gamma_correction":
         return fn(image, gamma=params["gamma"])
-    if func_idx == 9:  # noop
-        return image
 
     raise ValueError(f"Unknown preprocessing function idx {func_idx}")
 
@@ -151,24 +162,31 @@ def apply_pipeline(image_path: Path, func_indices: Tuple[int, int, int], params:
 # -----------------------------------------------------------------------------
 
 
-def brisque_score(img: np.ndarray) -> float:
+def brisque_score(img: np.ndarray, brisque_model) -> float:
+    """Compute BRISQUE score of an image using the provided model."""
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    val = BRISQUE_MODEL.compute(gray)
-    return float(val[0] if isinstance(val, (list, tuple, np.ndarray)) else val)
+    val = brisque_model.compute(gray)
+    return float(val[0] if isinstance(val, (list, tuple)) else val)
 
 
 def evaluate_candidate(
     func_indices: Tuple[int, int, int],
     params: Dict,
     images: List[Path],
+    brisque_model,
     max_workers: int = 8,
 ) -> float:
     """Return **mean** BRISQUE given pipeline on ``images``."""
+
+    # Human‐readable pipeline description
+    pipeline_names = [FUNC_INDEX[i] for i in func_indices if i != 9]
+    #print("Evaluating pipeline %s with params %s on %d images", pipeline_names, params, len(images))
+
     scores: List[float] = []
 
     def _worker(path):
         processed = apply_pipeline(path, func_indices, params)
-        return brisque_score(processed)
+        return brisque_score(processed, brisque_model)
 
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         futures = [ex.submit(_worker, p) for p in images]
@@ -188,7 +206,9 @@ def optimise_severity(
     n_init: int = 20,
     n_iter: int = 30,
     q: int = 4,
-    pipelines_path: Path = None,
+    pipelines_path: Path | None = None,
+    brisque_model=None,
+    processed_path: Path | None = None,
 ):
     """Run BO and save best pipeline for a severity bucket.
     Args:
@@ -199,10 +219,11 @@ def optimise_severity(
         q: int, the number of points to sample in each iteration
     """
     if not images:
-        print(f"[WARN] No images for severity '{severity}', skipping optimisation")
+        logger.warning(f"[WARN] No images for severity '{severity}', skipping optimisation")
         return
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    logger.info(f"Using device: {device}")
     dtype = torch.double
 
     # Variable ordering: stage1, stage2, stage3, smoothing_param, clahe_clip, alpha, gamma
@@ -237,7 +258,9 @@ def optimise_severity(
         if k % 2 == 0:
             k += 1 if k < 15 else -1
         param_dict = {
-            "smooth_param": k,
+            "kernel_size": k,
+            "diameter": k,
+            "luminance": k,
             "clahe_clip": clip,
             "alpha": alpha,
             "gamma": gamma,
@@ -246,17 +269,23 @@ def optimise_severity(
 
     # Sobol initial design ------------------------------------------------------
     sobol = torch.quasirandom.SobolEngine(dimension=bounds.shape[1], scramble=True)
-    X = bounds[0] + (bounds[1] - bounds[0]) * sobol.draw(n_init).to(device).double()
+    X_raw = bounds[0] + (bounds[1] - bounds[0]) * sobol.draw(n_init).to(device).double()
+
+    # Min-max normalise to unit cube for GP fitting
+    def _norm(x):
+        return (x - bounds[0]) / (bounds[1] - bounds[0])
+
+    X = _norm(X_raw)
 
     Y_list = []
-    for x in X:
-        funcs, params = decode_x(x)
-        score = evaluate_candidate(funcs, params, images)
+    for i in range(n_init):
+        funcs, params = decode_x(X_raw[i])
+        score = evaluate_candidate(funcs, params, images, brisque_model)
         Y_list.append([score])
     Y = torch.tensor(Y_list, device=device, dtype=dtype)
 
     best_index = torch.argmin(Y)
-    best_x = X[best_index].detach().cpu()
+    best_x = X_raw[best_index].detach().cpu()
     best_y = Y[best_index].item()
 
     # BO loop -------------------------------------------------------------------
@@ -264,17 +293,15 @@ def optimise_severity(
         # Fit GP
         gp = SingleTaskGP(X, standardize(Y))
         mll = ExactMarginalLogLikelihood(gp.likelihood, gp)
-        mll = mll.to(device)
         gp = gp.to(device)
-        mll.train()
-        gp.train()
-        mll.eval()
-        gp.eval()
-        mll.fit()
+        mll = mll.to(device)
+
+        # Optimise hyper-parameters
+        fit_gpytorch_mll(mll)
 
         # Acquisition
-        sampler = SobolQMCNormalSampler(num_samples=128)
-        qEI = qExpectedImprovement(model=gp, best_f=Y.min(), sampler=sampler)
+        sampler = SobolQMCNormalSampler(torch.Size([128]))
+        qEI = qLogExpectedImprovement(model=gp, best_f=Y.min(), sampler=sampler)
 
         candidate, _ = optimize_acqf(
             acq_function=qEI,
@@ -284,22 +311,26 @@ def optimise_severity(
             raw_samples=256,
         )
 
-        # De-normalise candidate to original bounds
-        cand_denorm = bounds[0] + (bounds[1] - bounds[0]) * candidate.squeeze(0)
+        # candidate is in unit cube → de-normalise to real parameter space
+        cand_raw = candidate[0]  # take first element if q>1
+        cand_denorm = bounds[0] + (bounds[1] - bounds[0]) * cand_raw
         funcs, params = decode_x(cand_denorm)
-        score = evaluate_candidate(funcs, params, images)
+        score = evaluate_candidate(funcs, params, images, brisque_model)
 
-        X = torch.cat([X, cand_denorm.unsqueeze(0)], dim=0)
+        # Update raw and normalised design points
+        X_raw = torch.cat([X_raw, cand_denorm.unsqueeze(0)], dim=0)
+        X = torch.cat([X, _norm(cand_denorm).unsqueeze(0)], dim=0)
         Y = torch.cat([Y, torch.tensor([[score]], device=device, dtype=dtype)], dim=0)
 
         if score < best_y:
             best_y = score
             best_x = cand_denorm.detach().cpu()
         print(
-            f"[{severity}] Iter {iteration+1}/{n_iter} -> best mean BRISQUE so far: {best_y:.3f}"
+            f"[{severity}] Iter {iteration+1}/{n_iter}-> best mean BRISQUE so far: {best_y:.3f}"
         )
 
     # Save best pipeline --------------------------------------------------------
+    result_list = []
     best_funcs, best_params = decode_x(best_x)
     result = {
         "functions": [FUNC_INDEX[i] for i in best_funcs if i != 9],
@@ -309,13 +340,18 @@ def optimise_severity(
     out_path = pipelines_path / f"{severity}.json"
     with open(out_path, "w") as f:
         json.dump(result, f, indent=4)
-    print(f"[{severity}] optimisation finished -> saved to {out_path}")
+    logger.info(f"[{severity}] optimisation finished -> saved to {out_path}")
+    result_list.append(result)
 
-
-# -----------------------------------------------------------------------------
-# Entry-point
-# -----------------------------------------------------------------------------
-
+    if processed_path is not None:
+        save_dir = Path(processed_path)
+        save_dir.mkdir(parents=True, exist_ok=True)
+        for img_path in images:
+            processed = apply_pipeline(img_path, best_funcs, best_params)
+            out_file = save_dir / img_path.name
+            cv2.imwrite(str(out_file), processed)
+        logger.info("[%s] Saved %d processed images to %s", severity, len(images), save_dir)
+    return result_list
 
 def run_bayesian_optimization(
     auto: bool = True,
@@ -324,8 +360,9 @@ def run_bayesian_optimization(
     n_iter: int = 30,
     q: int = 4,
     input_path: Path = None,
-    pipelines_path: Path = None,
-):
+    artefacts_path: Path = None,
+    processed_path: Path = None,
+    ):
     """Optimise preprocessing pipelines or apply a user-defined one.
 
     Parameters
@@ -345,24 +382,44 @@ def run_bayesian_optimization(
         Batch size for qEI acquisition. Only relevant when ``auto`` is True.
     """
 
-    batches = load_batches(input_path)
+    # Lazily instantiate the BRISQUE model to avoid heavyweight global initialisation
+    BRISQUE_MODEL = cv2.quality.QualityBRISQUE_create(
+        str(root / "src" / "config" / "brisque" / "brisque_model_live.yml"),
+        str(root / "src" / "config" / "brisque" / "brisque_range_live.yml"),
+    )
+    batches = load_batches(artefacts_path,input_path)
+    logger.info(f"Batches created from {input_path}")
+    pipelines_path = artefacts_path / Path("pipelines")
+
+    results: List[Dict] = []  # collect results for return
 
     if auto:
         # ------------------------- Bayesian optimisation path -------------------------
         with ThreadPoolExecutor(max_workers=3) as ex:
             futures = {
-                ex.submit(optimise_severity, sev, imgs, n_init, n_iter, q, pipelines_path): sev
+                ex.submit(
+                    optimise_severity,
+                    sev,
+                    imgs,
+                    n_init,
+                    n_iter,
+                    q,
+                    pipelines_path,
+                    BRISQUE_MODEL,
+                    processed_path,
+                ): sev
                 for sev, imgs in batches.items()
                 if imgs
             }
             for fut in as_completed(futures):
                 sev = futures[fut]
                 try:
-                    fut.result()
+                    res = fut.result()
+                    if res:  # extend with list of dicts
+                        results.extend(res)
                 except Exception as e:
-                    print(f"[ERROR] optimisation for severity '{sev}' failed: {e}")
+                    logger.error(f"[ERROR] optimisation for severity '{sev}' failed: {e}")
     else:
-        # -------------------------- Manual pipeline path ------------------------------
         if not custom_pipeline:
             # Sensible default if user does not provide anything
             custom_pipeline = [
@@ -378,24 +435,37 @@ def run_bayesian_optimization(
         func_indices = tuple(func_ids)  # type: ignore
 
         # Default parameters (can be expanded later)
-        params = {"smooth_param": 3, "clahe_clip": 2.0, "alpha": 1.0, "gamma": 1.0}
+        params = {"kernel_size": 3, "diameter": 3, "luminance": 3, "clahe_clip": 2.0, "alpha": 1.0, "gamma": 1.0}
 
         for sev, imgs in batches.items():
             if not imgs:
                 continue
-            score = evaluate_candidate(func_indices, params, imgs)
+            score = evaluate_candidate(func_indices, params, imgs, BRISQUE_MODEL)
             result = {
                 "functions": [FUNC_INDEX[i] for i in func_indices if i != 9],
                 "params": params,
                 "score": score,
+                "severity": sev,
             }
+            results.append(result)
             out_path = pipelines_path / f"{sev}.json"
             with open(out_path, "w") as f:
                 json.dump(result, f, indent=4)
-            print(
+            logger.info(
                 f"[{sev}] manual pipeline evaluated -> mean BRISQUE: {score:.3f}, saved to {out_path}"
             )
 
+            # Save processed images under manual path
+            if processed_path is not None:
+                save_dir = Path(processed_path) / sev
+                save_dir.mkdir(parents=True, exist_ok=True)
+                for img_path in imgs:
+                    processed_img = apply_pipeline(img_path, func_indices, params)
+                    cv2.imwrite(str(save_dir / img_path.name), processed_img)
+                logger.info("[%s] Saved %d processed images to %s (manual pipeline)", sev, len(imgs), save_dir)
+
+    return results
+
 
 if __name__ == "__main__":
-    run_bayesian_optimization()
+    run_bayesian_optimization(input_path=str(Path("C:/Users/srikr/workspace/generative-ai-agentic-cv-base/data/Cats/raw")), artefacts_path=str(Path("C:/Users/srikr/workspace/generative-ai-agentic-cv-base/data/Cats/artefacts/")),processed_path=str(Path("C:/Users/srikr/workspace/generative-ai-agentic-cv-base/data/Cats/processed/")))

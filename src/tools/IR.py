@@ -1,10 +1,12 @@
 import os
 import logging
+from pathlib import Path
 from typing import List, Optional
 
 from langchain_core.tools import tool
 from .decorators import log_io
 from src.utils.optimize_preprocess import run_bayesian_optimization
+from src.utils.minio import Create
 
 logger = logging.getLogger(__name__)
 
@@ -36,21 +38,25 @@ def preprocessing_pipeline(
         Batch size for acquisition function during optimisation (only when auto).
     """
     DATA_DIR = os.getenv("DATA_DIR")
-    input_path = Path(DATA_DIR) / "raw"
-    artefacts_path = Path(DATA_DIR) / "artefacts"
+    input_path = f"{DATA_DIR}/raw"
+    artefacts_path = f"{DATA_DIR}/artefacts"
     os.makedirs(artefacts_path,exist_ok=True)
-    pipelines_path = artefacts_path / "pipelines"
-    os.makedirs(pipelines_path,exist_ok=True)
+    processed_path = f"{DATA_DIR}/processed"
+    os.makedirs(processed_path,exist_ok=True)
 
-    run_bayesian_optimization(
+    logger.info(f"Running preprocessing pipeline with auto={auto}, custom_pipeline={custom_pipeline}, n_init={n_init}, n_iter={n_iter}, q={q}, input_path={input_path}, artefacts_path={artefacts_path}, processed_path={processed_path}")
+    result_list = run_bayesian_optimization(
         auto=auto,
         custom_pipeline=custom_pipeline,
         n_init=n_init,
         n_iter=n_iter,
         q=q,
-        input_path=input_path,
-        pipelines_path=pipelines_path
+        input_path=str(Path(input_path)),
+        artefacts_path=str(Path(artefacts_path)),
+        processed_path=str(Path(processed_path))
     )
-
-    mode = "auto-optimised" if auto else "custom/manual"
-    return f"Preprocessing pipeline routine completed successfully ({mode} mode)."
+    logger.info(f"Preprocessing pipeline completed successfully with result_list={result_list}")
+    create = Create()
+    create.upload_object(processed_path, f"{PROJECT_NAME}/processed")
+    logger.info(f"Preprocessed images uploaded to {PROJECT_NAME}/processed in minio")
+    return result_list
