@@ -38,6 +38,7 @@ def preprocessing_pipeline(
         Batch size for acquisition function during optimisation (only when auto).
     """
     DATA_DIR = os.getenv("DATA_DIR")
+    PROJECT_NAME = os.getenv("PROJECT_NAME")
     input_path = f"{DATA_DIR}/raw"
     artefacts_path = f"{DATA_DIR}/artefacts"
     os.makedirs(artefacts_path,exist_ok=True)

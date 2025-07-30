@@ -41,6 +41,7 @@ def no_reference_iqa() -> Tuple[Dict,Dict]:
         Tuple: Return a dictionary of the number of images and the average score in each degradation severity level
     """
     DATA_DIR = os.getenv("DATA_DIR")
+    PROJECT_NAME = os.getenv("PROJECT_NAME")
     input_path = f"{DATA_DIR}/raw"
     artefacts_path = f"{DATA_DIR}/artefacts"
     os.makedirs(artefacts_path,exist_ok=True)

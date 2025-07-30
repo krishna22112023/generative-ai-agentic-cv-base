@@ -390,6 +390,7 @@ def run_bayesian_optimization(
     batches = load_batches(artefacts_path,input_path)
     logger.info(f"Batches created from {input_path}")
     pipelines_path = artefacts_path / Path("pipelines")
+    os.makedirs(pipelines_path,exist_ok=True)
 
     results: List[Dict] = []  # collect results for return
 
@@ -457,12 +458,10 @@ def run_bayesian_optimization(
 
             # Save processed images under manual path
             if processed_path is not None:
-                save_dir = Path(processed_path) / sev
-                save_dir.mkdir(parents=True, exist_ok=True)
                 for img_path in imgs:
                     processed_img = apply_pipeline(img_path, func_indices, params)
-                    cv2.imwrite(str(save_dir / img_path.name), processed_img)
-                logger.info("[%s] Saved %d processed images to %s (manual pipeline)", sev, len(imgs), save_dir)
+                    cv2.imwrite(str(processed_path / img_path.name), processed_img)
+                logger.info("[%s] Saved %d processed images to %s (manual pipeline)", sev, len(imgs), processed_path)
 
     return results
 
