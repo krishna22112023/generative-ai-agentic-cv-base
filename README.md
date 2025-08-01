@@ -167,3 +167,7 @@ The core routine `optimise_severity` (same file) proceeds as follows:
 See [`src/utils/optimize_preprocess.py`](src/utils/optimize_preprocess.py) for the full implementation.
 
 
+### TO DO : Add evaluations and benchmarks to evaluate performance
+1. Data Throughput: Number of raw images/videos processed per hour/day (e.g ≥ 10,000 items/hour).
+2. Error Rate: % of pipeline failures or manual interventions per 1,000 jobs (≤ 1 %)
+3. Quality improvement: % improvement of a standardized quality metric. (≥ 10% improvement in BRISQUE)
