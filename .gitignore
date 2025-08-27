@@ -18,3 +18,7 @@ agent_history.gif
 
 modules/**
 model_zoo/**
+
+experiments/**
+
+data/**

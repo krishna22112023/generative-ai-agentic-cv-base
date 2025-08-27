@@ -1,0 +1,1 @@
+Which of the two images, Image A or Image B, do you consider to be of better quality? Answer the question using a single word "Image A" or "Image B"

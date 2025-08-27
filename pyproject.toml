@@ -30,7 +30,7 @@ dependencies = [
     "opencv-contrib-python",
     "torch",
     "torchvision",
-    "transformers==4.36.2",
+    "transformers",
     "accelerate",
     "sentencepiece",
     "icecream",
@@ -40,7 +40,12 @@ dependencies = [
     "boto3",
     "dvc",
     "dvc-s3",
-    "botorch"]
+    "botorch",
+    "huggingface_hub[cli]",
+    "diffusers",
+    "bitsandbytes",
+    "dashscope",
+    "pyiqa"]
 
 [project.optional-dependencies]
 dev = [

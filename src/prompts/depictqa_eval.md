@@ -1,0 +1,1 @@
+What's the severity of {degradation} in this image? Answer the question using a single word in the following: very low, low, medium, high, very high.

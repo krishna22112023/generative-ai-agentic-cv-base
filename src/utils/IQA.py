@@ -1,12 +1,18 @@
 import warnings
 warnings.filterwarnings("ignore")
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
 import os
 from pathlib import Path
 import logging
 import cv2
 from PIL import Image
 import numpy as np
+import requests
+import pyprojroot
+import torch
+from torchvision import transforms
+
+root = pyprojroot.find_root(pyprojroot.has_dir("src"))
 
 
 logger = logging.getLogger(__name__)
@@ -194,10 +200,103 @@ def get_metadata(input_path):
     return stats
 
 
+class QAlign:
+    def __init__(self, host: str = "127.0.0.1", port: int = 5003):
+        self.url = f"http://{host}:{port}/qalign_score"
+
+    def query(self, image_path: str) -> float:
+        resp = requests.post(self.url, json={"image_path": image_path}, timeout=30)
+        resp.raise_for_status()
+        return float(resp.json()["score"])
+
+class DepictQA:
+    """Parameters when called: img_path_lst, task (eval_degradation or comp_quality), degradations (if task is eval_degradation)."""
+
+    def query(
+        self,
+        img_path_lst: list[Path],
+        task: str,
+        degradation: Optional[str] = None,
+    ) -> tuple[str, str | list[tuple[str, str]]]:
+        assert task in ["eval_degradation", "comp_quality"], f"Unexpected task: {task}"
+        if task == "eval_degradation":
+            assert (
+                len(img_path_lst) == 1
+            ), "Only one image should be provided for degradation evaluation."
+            return self.eval_degradation(img_path_lst[0], degradation)
+        else:
+            assert (
+                len(img_path_lst) == 2
+            ), "Two images should be provided quality comparison."
+            return self.compare_img_qual(img_path_lst[0], img_path_lst[1])
+
+    def eval_degradation(
+        self, img: Path, degradation: Optional[str]
+    ) -> tuple[str, list[tuple[str, str]]]:
+        all_degradations: list[str] = [
+            "motion blur",
+            "defocus blur",
+            "rain",
+            "raindrop",
+            "haze",
+            "dark",
+            "noise",
+            "jpeg compression artifact",
+        ]
+        if degradation is None:
+            degradations_lst = all_degradations
+        else:
+            if degradation == "low resolution":
+                degradation = "blur"
+            else:
+                assert isinstance(
+                    degradation, str
+                ), f"Unexpected type of degradations: {type(degradation)}"
+                assert (
+                    degradation in all_degradations
+                ), f"Unexpected degradation: {degradation}"
+            degradations_lst = [degradation]
+
+        levels: set[str] = {"very low", "low", "medium", "high", "very high"}
+        res: list[tuple[str, str]] = []
+        depictqa_evaluate_degradation_prompt = open(f"{root}/src/prompts/depictqa_eval.md").read()
+        for degradation in degradations_lst:
+            prompt = depictqa_evaluate_degradation_prompt.format(
+                degradation=degradation
+            )
+            url = "http://127.0.0.1:5001/evaluate_degradation"
+            payload = {"imageA_path": img.resolve(), "prompt": prompt}
+            rsp: str = requests.post(url, data=payload).json()["answer"]
+            assert rsp in levels, f"Unexpected response from DepictQA: {list(rsp)}"
+            res.append((degradation, rsp))
+
+        prompt_to_display = depictqa_evaluate_degradation_prompt.format(
+            degradation=degradations_lst
+        )
+        return prompt_to_display, res
+
+    def compare_img_qual(self, img1: Path, img2: Path) -> tuple[str, str]:
+        prompt = open(f"{root}/src/prompts/depictqa_compare.md").read()
+        url = "http://127.0.0.1:5002/compare_quality"
+        payload = {
+            "imageA_path": img1.resolve(),
+            "imageB_path": img2.resolve(),
+            "prompt": prompt
+        }
+        rsp: str = requests.post(url, data=payload).json()["answer"]
+
+        if "A" in rsp and "B" not in rsp:
+            choice = "former"
+        elif "B" in rsp and "A" not in rsp:
+            choice = "latter"
+        else:
+            raise ValueError(f"Unexpected answer from DepictQA: {rsp}")
+
+        return prompt, choice
+
 if __name__ == "__main__":
 
-    input_path = "/Users/krishnaiyer/generative-ai-agentic-cv-base/data/raw/Test"
-
+    '''input_path = "/Users/krishnaiyer/generative-ai-agentic-cv-base/data/raw/Test"
     nr_iqa_scores, mean_nr_iqa_scores = nr_iqa(input_path)
     print("NR IQA SCORES")
     print(nr_iqa_scores)
@@ -210,4 +309,18 @@ if __name__ == "__main__":
     #print(results)
 
     print("AGGREGATED VLM IQA RESULTS")
-    #print(aggregated)
+    #print(aggregated)'''
+
+    from glob import glob
+    depictqa = DepictQA()
+    img_path_lst = glob("/home/krishna/workspace/generative-ai-agentic-cv-base/data/raw/*.jpg")
+    print(img_path_lst)
+    for img_path in img_path_lst:
+        prompt_to_display, res = depictqa.query([Path(img_path)], "eval_degradation")
+        print(prompt_to_display)
+        print(res)
+        break
+
+    '''qalign = QAlign()
+    print(qalign.query("/home/krishna/workspace/generative-ai-agentic-cv-base/data/raw/foggy-001.jpg"))'''
+    
