@@ -217,13 +217,14 @@ class DepictQA:
         img_path_lst: list[Path],
         task: str,
         degradation: Optional[str] = None,
+        replan: bool = False
     ) -> tuple[str, str | list[tuple[str, str]]]:
         assert task in ["eval_degradation", "comp_quality"], f"Unexpected task: {task}"
         if task == "eval_degradation":
             assert (
                 len(img_path_lst) == 1
             ), "Only one image should be provided for degradation evaluation."
-            return self.eval_degradation(img_path_lst[0], degradation)
+            return self.eval_degradation(img_path_lst[0], degradation, replan)
         else:
             assert (
                 len(img_path_lst) == 2
@@ -231,7 +232,7 @@ class DepictQA:
             return self.compare_img_qual(img_path_lst[0], img_path_lst[1])
 
     def eval_degradation(
-        self, img: Path, degradation: Optional[str]
+        self, img: Path, degradation: Optional[str], replan: bool = False, previous_plan: Optional[str] = None
     ) -> tuple[str, list[tuple[str, str]]]:
         all_degradations: list[str] = [
             "motion blur",
@@ -259,11 +260,21 @@ class DepictQA:
 
         levels: set[str] = {"very low", "low", "medium", "high", "very high"}
         res: list[tuple[str, str]] = []
-        depictqa_evaluate_degradation_prompt = open(f"{root}/src/prompts/depictqa_eval.md").read()
+        if replan:
+            depictqa_evaluate_degradation_prompt = open(f"{root}/src/prompts/depictqa_eval_replan.md").read()
+            logger.info(f"Re-evaluating degradations for {img.name} with prompt: {previous_plan}")
+        else:
+            depictqa_evaluate_degradation_prompt = open(f"{root}/src/prompts/depictqa_eval.md").read()
+            logger.info(f"Evaluating degradation for {img.name} with prompt: {depictqa_evaluate_degradation_prompt}")
         for degradation in degradations_lst:
-            prompt = depictqa_evaluate_degradation_prompt.format(
-                degradation=degradation
-            )
+            if replan:
+                prompt = depictqa_evaluate_degradation_prompt.format(
+                    degradation=degradation, previous_plan=previous_plan
+                )
+            else:
+                prompt = depictqa_evaluate_degradation_prompt.format(
+                    degradation=degradation
+                )
             url = "http://127.0.0.1:5001/evaluate_degradation"
             payload = {"imageA_path": img.resolve(), "prompt": prompt}
             rsp: str = requests.post(url, data=payload).json()["answer"]

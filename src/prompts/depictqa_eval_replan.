@@ -1,0 +1,2 @@
+The previous plan was: {previous_plan}. Reconsider the degradations in this image and rate their severity again.
+What's the severity of {degradation} in this image? Answer the question using a single word in the following: very low, low, medium, high, very high.

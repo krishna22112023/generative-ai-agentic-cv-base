@@ -76,7 +76,13 @@ class Planning:
         self.depictqa = DepictQA()
         self.qalign = QAlign()
 
-    def image_quality_analysis(self, images_subset: List[str] | None = None) -> None:
+    def image_quality_analysis(
+        self,
+        images_subset: List[str] | None = None,
+        *,
+        replan: bool = False,
+        previous_plans: Dict[str, str] | None = None,
+    ) -> None:
         """Run DepictQA on every image and persist full results to *IQA.json*.
 
         The resulting JSON maps *filename* → list[(degradation, severity)]. No
@@ -99,8 +105,16 @@ class Planning:
 
         for img_path in image_paths:
             try:
+                prev_plan_str = None
+                if replan and previous_plans is not None:
+                    prev_plan_str = previous_plans.get(img_path.name)
                 # DepictQA returns (prompt, list[(degradation, level), …])
-                _, res = self.depictqa.query([img_path], "eval_degradation")
+                _, res = self.depictqa.query(
+                    [img_path],
+                    "eval_degradation",
+                    replan=replan,
+                    previous_plan=prev_plan_str,
+                )
             except Exception as e:  
                 logger.warning("DepictQA failed for %s: %s", img_path.name, e)
                 res = []
@@ -457,9 +471,25 @@ if __name__ == "__main__":
 
         logger.info("--- Iteration %d: processing %d image(s) ---", attempt, len(to_process))
 
+        # Prepare previous plan mapping (if not first iteration)
+        prev_plans_map: Dict[str, str] | None = None
+        if attempt > 1:
+            try:
+                combo_to_plan = _read_json(artefacts_path / "batch_pipeline.json")
+                combo_to_imgs = _read_json(artefacts_path / "batch_IQA.json")
+                prev_plans_map = {}
+                for combo, imgs in combo_to_imgs.items():
+                    if combo in combo_to_plan:
+                        seq = combo_to_plan[combo]
+                        seq_str = " -> ".join(seq)
+                        for img in imgs:
+                            prev_plans_map[img] = seq_str
+            except Exception:
+                prev_plans_map = None
+
         # Planning restricted to failed/raw list
         planning = Planning(data_path, artefacts_path)
-        planning.image_quality_analysis(images_subset=to_process)
+        planning.image_quality_analysis(images_subset=to_process, replan=(attempt > 1), previous_plans=prev_plans_map)
         planning.batch_process()
 
         # Execute
